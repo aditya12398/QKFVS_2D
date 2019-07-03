@@ -32,6 +32,8 @@ struct Cell
 	int *edge, noe, nbhs, *conn;  //Holds enclosing edges and neighbour cell data.
 	double area, cx, cy;		  //Area of the cell and cell centre coordinates
 	double rho, u1, u2, pr, tp;   //Values of density, x - velocity, y - velocity, pressure and temperature of the cell
+	double u1x, u2x, u1y, u2y;
+	double tpx, tpy;
 	double flux[5];				  //Kinetic Fluxes. Reference: See function `void KFVS_pos_flux(...)`
 	double Upold[5], Upnew[5];	//Corresponds to void forward_sweep()
 	double Unew[5], Uold[5];	  //Corresponds to void backward_sweep()
