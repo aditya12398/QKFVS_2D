@@ -3,8 +3,8 @@
 #include <cmath>
 using namespace std;
 
-int imax = 298;
-int jmax = 180;
+int imax = 269;
+int jmax = 100;
 int max_points;
 int max_cells;
 int max_edges;
@@ -196,144 +196,90 @@ void cell_data()
 		{
 			if (i == 1)
 			{
-				cell[k].conn[nbhs] = get_cell(imax, j);
-				nbhs++;
-				cell[k].conn[nbhs] = get_cell(i + 1, j);
-				nbhs++;
-				cell[k].conn[nbhs] = get_cell(imax, j + 1);
-				nbhs++;
-				cell[k].conn[nbhs] = get_cell(i, j + 1);
-				nbhs++;
-				cell[k].conn[nbhs] = get_cell(i + 1, j + 1);
-				nbhs++;
+				//cell[k].conn[nbhs++] = get_cell(imax, j);
+				cell[k].conn[nbhs++] = get_cell(i + 1, j);
+				//cell[k].conn[nbhs++] = get_cell(imax, j + 1);
+				cell[k].conn[nbhs++] = get_cell(i, j + 1);
+				cell[k].conn[nbhs++] = get_cell(i + 1, j + 1);
 			}
 			else if (i > 1 && i < imax)
 			{
-				cell[k].conn[nbhs] = get_cell(i - 1, j);
-				nbhs++;
-				cell[k].conn[nbhs] = get_cell(i + 1, j);
-				nbhs++;
-				cell[k].conn[nbhs] = get_cell(i - 1, j + 1);
-				nbhs++;
-				cell[k].conn[nbhs] = get_cell(i, j + 1);
-				nbhs++;
-				cell[k].conn[nbhs] = get_cell(i + 1, j + 1);
-				nbhs++;
+				cell[k].conn[nbhs++] = get_cell(i - 1, j);
+				cell[k].conn[nbhs++] = get_cell(i + 1, j);
+				cell[k].conn[nbhs++] = get_cell(i - 1, j + 1);
+				cell[k].conn[nbhs++] = get_cell(i, j + 1);
+				cell[k].conn[nbhs++] = get_cell(i + 1, j + 1);
 			}
 			if (i == imax)
 			{
-				cell[k].conn[nbhs] = get_cell(i - 1, j);
-				nbhs++;
-				cell[k].conn[nbhs] = get_cell(1, j);
-				nbhs++;
-				cell[k].conn[nbhs] = get_cell(i - 1, j + 1);
-				nbhs++;
-				cell[k].conn[nbhs] = get_cell(i, j + 1);
-				nbhs++;
-				cell[k].conn[nbhs] = get_cell(1, j + 1);
-				nbhs++;
+				cell[k].conn[nbhs++] = get_cell(i - 1, j);
+				//cell[k].conn[nbhs++] = get_cell(1, j);
+				cell[k].conn[nbhs++] = get_cell(i - 1, j + 1);
+				cell[k].conn[nbhs++] = get_cell(i, j + 1);
+				//cell[k].conn[nbhs++] = get_cell(1, j + 1);
 			}
 		}
 		else if (j > 1 && j < jmax - 1)
 		{
 			if (i == 1)
 			{
-				cell[k].conn[nbhs] = get_cell(imax, j - 1);
-				nbhs++;
-				cell[k].conn[nbhs] = get_cell(i, j - 1);
-				nbhs++;
-				cell[k].conn[nbhs] = get_cell(i + 1, j - 1);
-				nbhs++;
-				cell[k].conn[nbhs] = get_cell(imax, j);
-				nbhs++;
-				cell[k].conn[nbhs] = get_cell(i + 1, j);
-				nbhs++;
-				cell[k].conn[nbhs] = get_cell(imax, j + 1);
-				nbhs++;
-				cell[k].conn[nbhs] = get_cell(i, j + 1);
-				nbhs++;
-				cell[k].conn[nbhs] = get_cell(i + 1, j + 1);
-				nbhs++;
+				//cell[k].conn[nbhs++] = get_cell(imax, j - 1);
+				cell[k].conn[nbhs++] = get_cell(i, j - 1);
+				cell[k].conn[nbhs++] = get_cell(i + 1, j - 1);
+				//cell[k].conn[nbhs++] = get_cell(imax, j);
+				cell[k].conn[nbhs++] = get_cell(i + 1, j);
+				//cell[k].conn[nbhs++] = get_cell(imax, j + 1);
+				cell[k].conn[nbhs++] = get_cell(i, j + 1);
+				cell[k].conn[nbhs++] = get_cell(i + 1, j + 1);
 			}
 			else if (i > 1 && i < imax)
 			{
-				cell[k].conn[nbhs] = get_cell(i - 1, j - 1);
-				nbhs++;
-				cell[k].conn[nbhs] = get_cell(i, j - 1);
-				nbhs++;
-				cell[k].conn[nbhs] = get_cell(i + 1, j - 1);
-				nbhs++;
-				cell[k].conn[nbhs] = get_cell(i - 1, j);
-				nbhs++;
-				cell[k].conn[nbhs] = get_cell(i + 1, j);
-				nbhs++;
-				cell[k].conn[nbhs] = get_cell(i - 1, j + 1);
-				nbhs++;
-				cell[k].conn[nbhs] = get_cell(i, j + 1);
-				nbhs++;
-				cell[k].conn[nbhs] = get_cell(i + 1, j + 1);
-				nbhs++;
+				cell[k].conn[nbhs++] = get_cell(i - 1, j - 1);
+				cell[k].conn[nbhs++] = get_cell(i, j - 1);
+				cell[k].conn[nbhs++] = get_cell(i + 1, j - 1);
+				cell[k].conn[nbhs++] = get_cell(i - 1, j);
+				cell[k].conn[nbhs++] = get_cell(i + 1, j);
+				cell[k].conn[nbhs++] = get_cell(i - 1, j + 1);
+				cell[k].conn[nbhs++] = get_cell(i, j + 1);
+				cell[k].conn[nbhs++] = get_cell(i + 1, j + 1);
 			}
 			else if (i == imax)
 			{
-				cell[k].conn[nbhs] = get_cell(i - 1, j - 1);
-				nbhs++;
-				cell[k].conn[nbhs] = get_cell(i, j - 1);
-				nbhs++;
-				cell[k].conn[nbhs] = get_cell(1, j - 1);
-				nbhs++;
-				cell[k].conn[nbhs] = get_cell(i - 1, j);
-				nbhs++;
-				cell[k].conn[nbhs] = get_cell(1, j);
-				nbhs++;
-				cell[k].conn[nbhs] = get_cell(i - 1, j + 1);
-				nbhs++;
-				cell[k].conn[nbhs] = get_cell(i, j + 1);
-				nbhs++;
-				cell[k].conn[nbhs] = get_cell(1, j + 1);
-				nbhs++;
+				cell[k].conn[nbhs++] = get_cell(i - 1, j - 1);
+				cell[k].conn[nbhs++] = get_cell(i, j - 1);
+				//cell[k].conn[nbhs++] = get_cell(1, j - 1);
+				cell[k].conn[nbhs++] = get_cell(i - 1, j);
+				//cell[k].conn[nbhs++] = get_cell(1, j);
+				cell[k].conn[nbhs++] = get_cell(i - 1, j + 1);
+				cell[k].conn[nbhs++] = get_cell(i, j + 1);
+				//cell[k].conn[nbhs++] = get_cell(1, j + 1);
 			}
 		}
 		else if (j == jmax - 1)
 		{
 			if (i == 1)
 			{
-				cell[k].conn[nbhs] = get_cell(imax, j - 1);
-				nbhs++;
-				cell[k].conn[nbhs] = get_cell(i, j - 1);
-				nbhs++;
-				cell[k].conn[nbhs] = get_cell(i + 1, j - 1);
-				nbhs++;
-				cell[k].conn[nbhs] = get_cell(imax, j);
-				nbhs++;
-				cell[k].conn[nbhs] = get_cell(i + 1, j);
-				nbhs++;
+				//cell[k].conn[nbhs++] = get_cell(imax, j - 1);
+				cell[k].conn[nbhs++] = get_cell(i, j - 1);
+				cell[k].conn[nbhs++] = get_cell(i + 1, j - 1);
+				//cell[k].conn[nbhs++] = get_cell(imax, j);
+				cell[k].conn[nbhs++] = get_cell(i + 1, j);
 			}
 			if (i > 1 && i < imax)
 			{
-				cell[k].conn[nbhs] = get_cell(i - 1, j - 1);
-				nbhs++;
-				cell[k].conn[nbhs] = get_cell(i, j - 1);
-				nbhs++;
-				cell[k].conn[nbhs] = get_cell(i + 1, j - 1);
-				nbhs++;
-				cell[k].conn[nbhs] = get_cell(i - 1, j);
-				nbhs++;
-				cell[k].conn[nbhs] = get_cell(i + 1, j);
-				nbhs++;
+				cell[k].conn[nbhs++] = get_cell(i - 1, j - 1);
+				cell[k].conn[nbhs++] = get_cell(i, j - 1);
+				cell[k].conn[nbhs++] = get_cell(i + 1, j - 1);
+				cell[k].conn[nbhs++] = get_cell(i - 1, j);
+				cell[k].conn[nbhs++] = get_cell(i + 1, j);
 			}
 			if (i == imax)
 			{
-				cell[k].conn[nbhs] = get_cell(i, j - 1);
-				nbhs++;
-				cell[k].conn[nbhs] = get_cell(i - 1, j - 1);
-				nbhs++;
-				cell[k].conn[nbhs] = get_cell(1, j - 1);
-				nbhs++;
-				cell[k].conn[nbhs] = get_cell(1, j);
-				nbhs++;
-				cell[k].conn[nbhs] = get_cell(i - 1, j);
-				nbhs++;
+				cell[k].conn[nbhs++] = get_cell(i, j - 1);
+				cell[k].conn[nbhs++] = get_cell(i - 1, j - 1);
+				//cell[k].conn[nbhs++] = get_cell(1, j - 1);
+				//cell[k].conn[nbhs++] = get_cell(1, j);
+				cell[k].conn[nbhs++] = get_cell(i - 1, j);
 			}
 		}
 		cell[k].nbhs = nbhs;

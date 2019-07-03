@@ -5,13 +5,14 @@ using namespace std;
 
 int main()
 {
+    string filename = "Flatplate.dat";
     int imax, jmax;
     int i, j;
     double x, y, z;
-    ifstream infile("./gridpro.dat");
-    ofstream outfile("./gridout.dat");
+    ifstream infile(filename);
+    ofstream outfile("fixed_" + filename);
     infile >> imax >> jmax;
-    --imax;
+    //--imax;
     for (i = 1; i <= imax; i++)
     {
         for (j = 1; j <= jmax; j++)
