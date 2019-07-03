@@ -1,6 +1,7 @@
 #include <fstream>
 #include <iostream>
 #include <cmath>
+using namespace std;
 
 int imax = 298;
 int jmax = 180;
@@ -62,7 +63,7 @@ int main(int arg, char *argv[])
 
 void point_data()
 {
-	std::ifstream infile("./gridout.dat");
+	ifstream infile("./gridout.dat");
 	double x, y;
 	int i, j, num;
 	for (int k = 1; k <= max_points; k++)
@@ -504,36 +505,36 @@ void length(int N)
 
 void print()
 {
-	std::ofstream outfile("print");
+	ofstream outfile("print");
 	for (int k = 1; k <= max_edges; k++)
-		outfile << edge[k].v1 << "\t" << edge[k].v2 << "\t" << edge[k].lcell << "\t" << edge[k].rcell << std::endl;
+		outfile << edge[k].v1 << "\t" << edge[k].v2 << "\t" << edge[k].lcell << "\t" << edge[k].rcell << endl;
 } //End of the function
 
 void output1()
 {
-	std::ofstream outfile("1order-input-data");
-	outfile << max_edges << std::endl;
+	ofstream outfile("1order-input-data");
+	outfile << max_edges << endl;
 	for (int k = 1; k <= max_edges; k++)
-		outfile << edge[k].lcell << "\t" << edge[k].rcell << "\t" << edge[k].status << "\t" << edge[k].nx << "\t" << edge[k].ny << "\t" << edge[k].length << std::endl;
+		outfile << edge[k].lcell << "\t" << edge[k].rcell << "\t" << edge[k].status << "\t" << edge[k].nx << "\t" << edge[k].ny << "\t" << edge[k].length << endl;
 
-	outfile << max_cells << std::endl;
+	outfile << max_cells << endl;
 	for (int k = 1; k <= max_cells; k++)
 	{
 		cell[k].noe = 4;
 		outfile << cell[k].rho << "\t" << cell[k].u1 << "\t" << cell[k].u2 << "\t" << cell[k].pr << "\t" << cell[k].area << "\t" << cell[k].noe;
 		for (int r = 1; r <= cell[k].noe; r++)
 			outfile << "\t" << cell[k].e[r];
-		outfile << std::endl;
+		outfile << endl;
 	}
 } //End of the function
 
 void output2()
 {
-	std::ofstream outfile("2order-input-data");
-	outfile << max_edges << std::endl;
+	ofstream outfile("2order-input-data");
+	outfile << max_edges << endl;
 	for (int k = 1; k <= max_edges; k++)
-		outfile << edge[k].mx << "\t" << edge[k].my << "\t" << edge[k].lcell << "\t" << edge[k].rcell << "\t" << edge[k].status << "\t" << edge[k].nx << "\t" << edge[k].ny << "\t" << edge[k].length << std::endl;
-	outfile << max_cells << std::endl;
+		outfile << edge[k].mx << "\t" << edge[k].my << "\t" << edge[k].lcell << "\t" << edge[k].rcell << "\t" << edge[k].status << "\t" << edge[k].nx << "\t" << edge[k].ny << "\t" << edge[k].length << endl;
+	outfile << max_cells << endl;
 
 	for (int k = 1; k <= max_cells; k++)
 	{
@@ -544,37 +545,37 @@ void output2()
 		outfile << "\t" << cell[k].nbhs;
 		for (int r = 0; r < cell[k].nbhs; r++)
 			outfile << "\t" << cell[k].conn[r];
-		outfile << std::endl;
+		outfile << endl;
 	}
-	//e1<<"\t"<<cell[k].e2<<"\t"<<cell[k].e3<<"\t"<<cell[k].e4<<"\t"<<cell[k].area<<std::endl;
+	//e1<<"\t"<<cell[k].e2<<"\t"<<cell[k].e3<<"\t"<<cell[k].e4<<"\t"<<cell[k].area<<endl;
 } //End of the function
 
 //input file for vigie plot
 void vigie_plot()
 {
-	std::ofstream outfile("vigie-file");
-	outfile << max_points << std::endl;
-	outfile << std::endl;
+	ofstream outfile("vigie-file");
+	outfile << max_points << endl;
+	outfile << endl;
 	for (int k = 1; k <= max_points; k++)
-		outfile << point[k].x << "\t" << point[k].y << std::endl;
-	outfile << std::endl;
+		outfile << point[k].x << "\t" << point[k].y << endl;
+	outfile << endl;
 
-	outfile << max_cells << std::endl;
-	outfile << std::endl;
+	outfile << max_cells << endl;
+	outfile << endl;
 	for (int k = 1; k <= max_cells; k++)
-		outfile << cell[k].v1 << "\t" << cell[k].v2 << "\t" << cell[k].v3 << "\t" << cell[k].v4 << "\t" << cell[k].area << std::endl;
+		outfile << cell[k].v1 << "\t" << cell[k].v2 << "\t" << cell[k].v3 << "\t" << cell[k].v4 << "\t" << cell[k].area << endl;
 }
 // printing the point-data information
 void point_data_print()
 {
-	std::ofstream outfile("point-data");
+	ofstream outfile("point-data");
 	for (int k = 1; k <= max_points; k++)
 	{
 		outfile << k << "\t" << point[k].noc;
 		for (int r = 1; r <= point[k].noc; r++)
 			outfile << "\t" << point[k].c[r];
 
-		outfile << std::endl;
+		outfile << endl;
 	}
 } //End of the function
 // from i and j values getting cell number
