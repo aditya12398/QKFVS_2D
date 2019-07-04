@@ -64,7 +64,7 @@ int main(int arg, char *argv[])
 
 	input_data();
 	aliasing();
-	int T = 250;
+	int T = 50;
 	for (int t = 1; t <= max_iters; t++)
 	{
 		initial_conditions();
@@ -89,7 +89,7 @@ int main(int arg, char *argv[])
 
 		if (t == T)
 		{
-			T = T + 250;
+			T = T + 50;
 			print_output();
 		}
 	}
@@ -113,6 +113,8 @@ void input_data()
 	for (int k = 1; k <= max_edges; k++)
 	{
 		infile >> edge[k].mx >> edge[k].my >> edge[k].lcell >> edge[k].rcell >> edge[k].status >> edge[k].nx >> edge[k].ny >> edge[k].length;
+		if (edge[k].status == 'w')
+			edge[k].status = 'o';
 	}
 	//Input Cell data
 	infile >> max_cells;
@@ -164,10 +166,16 @@ double *gauss_elimination(double matrix[5][(6)])
 	}
 	//Convert the matrix to a lower triangle matrix
 	for (i = 4; i > 0; i--)
+	{
 		for (j = i - 1; j >= 0; j--)
+		{
+			double d = (matrix[j][i] / matrix[i][i]);
 			for (k = 5; k >= 0; k--)
-				matrix[j][k] -= (matrix[j][i] / matrix[i][i]) * matrix[i][k];
-
+			{
+				matrix[j][k] -= d * matrix[i][k];
+			}
+		}
+	}
 	solution[0] = matrix[0][5] / matrix[0][0];
 	for (i = 1; i < 5; i++)
 	{
@@ -193,35 +201,37 @@ void construct_equation(int k, char var, double matrix[5][6])
 	for (int i = 0; i < cell[k].nbhs; i++)
 	{
 		int p = cell[k].conn[i];
-		dx = cell[k].cx - cell[p].cx;
-		dy = cell[k].cy - cell[p].cy;
+		dx = cell[p].cx - cell[k].cx;
+		dy = cell[p].cy - cell[k].cy;
+		double dist = sqrt(dx * dx + dy * dy); //Distance between cell and edge midpoint
+		double w = 1 / pow(dist, 2.0);		   //Least Squares weight
+
 		if (var == 'u')
-			df = cell[k].u1 - cell[p].u1;
+			df = cell[p].u1 - cell[k].u1;
 		else if (var == 'v')
-			df = cell[k].u2 - cell[p].u2;
+			df = cell[p].u2 - cell[k].u2;
 		else if (var == 't')
-			df = cell[k].tp - cell[p].tp;
+			df = cell[p].tp - cell[k].tp;
+		sig_dfdx += w * df * dx;
+		sig_dfdy += w * df * dy;
+		sig_dfdxdx += w * df * dx * dx;
+		sig_dfdydy += w * df * dy * dy;
+		sig_dfdxdy += w * df * dx * dy;
 
-		sig_dfdx += df * dx;
-		sig_dfdy += df * dy;
-		sig_dfdxdx += df * dx * dx;
-		sig_dfdydy += df * dy * dy;
-		sig_dfdxdy += df * dx * dy;
+		sig_dxdx += w * dx * dx;
+		sig_dxdy += w * dx * dy;
+		sig_dydy += w * dy * dy;
 
-		sig_dxdx += dx * dx;
-		sig_dxdy += dx * dy;
-		sig_dydy += dy * dy;
+		sig_dxdxdx += w * dx * dx * dx;
+		sig_dxdxdy += w * dx * dx * dy;
+		sig_dxdydy += w * dx * dy * dy;
+		sig_dydydy += w * dy * dy * dy;
 
-		sig_dxdxdx += dx * dx * dx;
-		sig_dxdxdy += dx * dx * dy;
-		sig_dxdydy += dx * dy * dy;
-		sig_dydydy += dy * dy * dy;
-
-		sig_dxdxdxdx += dx * dx * dx * dx;
-		sig_dxdxdxdy += dx * dx * dx * dy;
-		sig_dxdxdydy += dx * dx * dy * dy;
-		sig_dxdydydy += dx * dy * dy * dy;
-		sig_dydydydy += dy * dy * dy * dy;
+		sig_dxdxdxdx += w * dx * dx * dx * dx;
+		sig_dxdxdxdy += w * dx * dx * dx * dy;
+		sig_dxdxdydy += w * dx * dx * dy * dy;
+		sig_dxdydydy += w * dx * dy * dy * dy;
+		sig_dydydydy += w * dy * dy * dy * dy;
 	}
 	matrix[0][5] = sig_dfdx;
 	matrix[1][5] = sig_dfdy;
@@ -337,6 +347,8 @@ void viscous_flux(double *G, double nx, double ny, int e, char status)
 		uref[1] = u_inf * Mach * cos(theta);
 		uref[2] = u_inf * Mach * sin(theta);
 	}
+	tp_dash[1] = tp_dash[2] = 0;
+
 	G[1] = 0;
 	G[2] = -(tauxx * nx + tauxy * ny);
 	G[3] = -(tauxy * nx + tauyy * ny);
@@ -391,7 +403,7 @@ void evaluate_flux()
 
 			KFVS_pos_flux(Gp, nx, ny, rhol, u1l, u2l, prl);
 			KFVS_neg_flux(Gn, nx, ny, rhor, u1r, u2r, prr);
-			viscous_flux(Gd, nx, ny, k, status);
+			//viscous_flux(Gd, nx, ny, k, status);
 			for (int r = 1; r <= 4; r++)
 			{
 				cell[lcell].flux[r] = cell[lcell].flux[r] + s * (*(Gp + r) + *(Gn + r) + *(Gd + r));
@@ -416,7 +428,7 @@ void evaluate_flux()
 			prl = lprim[4];
 
 			KFVS_wall_flux(Gwall, nx, ny, rhol, u1l, u2l, prl);
-			viscous_flux(Gd, nx, ny, k, status);
+			//viscous_flux(Gd, nx, ny, k, status);
 			for (int r = 1; r <= 4; r++)
 				cell[lcell].flux[r] = cell[lcell].flux[r] + s * (*(Gwall + r) + *(Gd + r));
 		}
@@ -438,7 +450,7 @@ void evaluate_flux()
 			prl = lprim[4];
 
 			KFVS_outer_flux(Gout, nx, ny, rhol, u1l, u2l, prl);
-			viscous_flux(Gd, nx, ny, k, status);
+			//viscous_flux(Gd, nx, ny, k, status);
 			for (int r = 1; r <= 4; r++)
 				cell[lcell].flux[r] = cell[lcell].flux[r] + s * (*(Gout + r) + *(Gd + r));
 		}
@@ -510,6 +522,7 @@ Reference Location: ../References/Kinetic_Flux_Vector_Splitting/
 */
 void KFVS_wall_flux(double *G, double nx, double ny, double rho, double u1, double u2, double pr)
 {
+	cout <<"called";
 	double un, ut;
 	ut = 0.0; //No slip boundary condition
 	un = 0.0;
