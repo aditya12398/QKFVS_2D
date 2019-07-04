@@ -13,10 +13,9 @@ int max_edges, max_cells, max_iters;
 double Mach, aoa, cfl, limiter_const;
 //double L = 1, rho_ref = 1.225, pr_ref, u_ref, tr_ref, tr_inf = 288.15; //Reference Quantities
 double gma = 1.4, R = 287, Prandtl_number = 0.72; //Flow and material parameters
-double residue, max_res;   //RMS Residue and maximum residue in the fluid domain
-int max_res_cell;		   //Cell number with maximum residue
+double residue, max_res;						  //RMS Residue and maximum residue in the fluid domain
+int max_res_cell;								  //Cell number with maximum residue
 double pi = 4.0 * atan(1.0);
-//int imax = 298;
 
 //Structure to store edge data
 struct Edge
@@ -32,8 +31,8 @@ struct Cell
 	int *edge, noe, nbhs, *conn;  //Holds enclosing edges and neighbour cell data.
 	double area, cx, cy;		  //Area of the cell and cell centre coordinates
 	double rho, u1, u2, pr, tp;   //Values of density, x - velocity, y - velocity, pressure and temperature of the cell
-	double u1x, u2x, u1y, u2y;
-	double tpx, tpy;
+	double u1x, u2x, u1y, u2y;	//Velocity derivatives
+	double tpx, tpy;			  //Temperature derivatives
 	double flux[5];				  //Kinetic Fluxes. Reference: See function `void KFVS_pos_flux(...)`
 	double Upold[5], Upnew[5];	//Corresponds to void forward_sweep()
 	double Unew[5], Uold[5];	  //Corresponds to void backward_sweep()
@@ -52,6 +51,7 @@ int main(int arg, char *argv[])
 	void initial_conditions();
 	void q_variables();
 	void q_derivatives();
+	void f_derivatives();
 	void evaluate_flux();
 	void forward_sweep();
 	void backward_sweep();
@@ -70,6 +70,7 @@ int main(int arg, char *argv[])
 		initial_conditions();
 		q_variables();
 		q_derivatives();
+		f_derivatives();
 		evaluate_flux();
 		forward_sweep();
 		backward_sweep();
@@ -134,200 +135,147 @@ void input_data()
 	infile2.close();
 } //End of the function
 
-/*
-Calculate derivatives of velocity at cell edges necessary to compute the wall shear stresses
-This function uses the neighbours of edge 'e' formed by `void construct_neighbours()`
-*/
-void u_derivatives(int *edge_nbs, int nbs, double *uref, double *u_dash, int lcell, int rcell, int e)
+double *gauss_elimination(double matrix[5][(6)])
+{
+	int i, j, k;
+	double *solution = new double[5];
+	double swap;
+	//Pivot the matrix for diagonal dominance
+	for (i = 0; i < 5; i++)
+	{
+		solution[i] = 0;
+		double max = fabs(matrix[i][i]);
+		int pos = i;
+		for (j = i; j < 5; j++)
+		{
+			if (fabs(matrix[j][i]) > max)
+			{
+				pos = j;
+				max = fabs(matrix[j][i]);
+			}
+		}
+		//Swap the elements
+		for (k = 0; k <= 5; k++)
+		{
+			swap = matrix[i][k];
+			matrix[i][k] = matrix[pos][k];
+			matrix[pos][k] = swap;
+		}
+	}
+	//Convert the matrix to a lower triangle matrix
+	for (i = 4; i > 0; i--)
+		for (j = i - 1; j >= 0; j--)
+			for (k = 5; k >= 0; k--)
+				matrix[j][k] -= (matrix[j][i] / matrix[i][i]) * matrix[i][k];
+
+	solution[0] = matrix[0][5] / matrix[0][0];
+	for (i = 1; i < 5; i++)
+	{
+		solution[i] = matrix[i][5];
+		for (j = i - 1; j >= 0; j--)
+		{
+			solution[i] -= (solution[j] * matrix[i][j]);
+		}
+		solution[i] = solution[i] / matrix[i][i];
+	}
+	return solution;
+}
+
+void construct_equation(int k, char var, double matrix[5][6])
 {
 	double sig_dxdx, sig_dydy, sig_dxdy;
-	double sig_dxdu1, sig_dxdu2, sig_dydu1, sig_dydu2; //Summation of (delta x (or y)) * (delta u1 (or u2))
-	sig_dxdx = sig_dxdy = sig_dydy = sig_dxdu1 = sig_dxdu2 = sig_dydu1 = sig_dydu2 = 0;
-	if (edge[e].status == 'w')
-	{
-		uref[1] = (cell[lcell].u1); //Linear Interpolation
-		uref[2] = (cell[lcell].u2);
-	}
-	else if (edge[e].status == 'o')
-	{
-		uref[1] = (cell[rcell].u1); //Linear Interpolation
-		uref[2] = (cell[rcell].u2);
-	}
-	else
-	{
-		double w1 = sqrt(pow((cell[lcell].cx - edge[e].mx), 2) + pow((cell[lcell].cy - edge[e].my), 2)); //Distance between left cell center and edge midpoint
-		double w2 = sqrt(pow((cell[rcell].cx - edge[e].mx), 2) + pow((cell[rcell].cy - edge[e].my), 2)); //Distance between right cell center and edge midpoint
-		uref[1] = (w1 * cell[lcell].u1 + w2 * cell[rcell].u1) / (w1 + w2);								 //Linear Interpolation
-		uref[2] = (w1 * cell[lcell].u2 + w2 * cell[rcell].u2) / (w1 + w2);								 //Linear Interpolation
-	}
+	double sig_dxdxdx, sig_dydydy, sig_dxdxdy, sig_dxdydy;
+	double sig_dxdxdxdx, sig_dydydydy, sig_dxdxdxdy, sig_dxdxdydy, sig_dxdydydy;
+	double sig_dfdx, sig_dfdy, sig_dfdxdx, sig_dfdydy, sig_dfdxdy;
+	double dx, dy, df;
+	sig_dxdx = sig_dydy = sig_dxdy = sig_dxdxdx = sig_dydydy = sig_dxdxdy = sig_dxdydy = sig_dxdxdxdx = sig_dydydydy = sig_dxdxdxdy = sig_dxdxdydy = sig_dxdydydy = sig_dfdx = sig_dfdy = sig_dfdxdx = sig_dfdydy = sig_dfdxdy = 0;
 
-	for (int j = 1; j <= nbs; j++)
+	for (int i = 0; i < cell[k].nbhs; i++)
 	{
-		int p = edge_nbs[j];
-		double delx = cell[p].cx - edge[e].mx;
-		double dely = cell[p].cy - edge[e].my;
-		double dist = sqrt(delx * delx + dely * dely); //Distance between cell and edge midpoint
-		double w = 1 / pow(dist, 2.0);				   //Least Squares weight
-		double delu1 = cell[p].u1 - (uref[1]);
-		double delu2 = cell[p].u2 - (uref[2]);
+		int p = cell[k].conn[i];
+		dx = cell[k].cx - cell[p].cx;
+		dy = cell[k].cy - cell[p].cy;
+		if (var == 'u')
+			df = cell[k].u1 - cell[p].u1;
+		else if (var == 'v')
+			df = cell[k].u2 - cell[p].u2;
+		else if (var == 't')
+			df = cell[k].tp - cell[p].tp;
 
-		sig_dxdx = sig_dxdx + w * delx * delx;
-		sig_dydy = sig_dydy + w * dely * dely;
-		sig_dxdy = sig_dxdy + w * delx * dely;
+		sig_dfdx += df * dx;
+		sig_dfdy += df * dy;
+		sig_dfdxdx += df * dx * dx;
+		sig_dfdydy += df * dy * dy;
+		sig_dfdxdy += df * dx * dy;
 
-		sig_dxdu1 = sig_dxdu1 + w * delx * delu1;
-		sig_dydu1 = sig_dydu1 + w * dely * delu1;
-		sig_dxdu2 = sig_dxdu2 + w * delx * delu2;
-		sig_dydu2 = sig_dydu2 + w * dely * delu2;
+		sig_dxdx += dx * dx;
+		sig_dxdy += dx * dy;
+		sig_dydy += dy * dy;
+
+		sig_dxdxdx += dx * dx * dx;
+		sig_dxdxdy += dx * dx * dy;
+		sig_dxdydy += dx * dy * dy;
+		sig_dydydy += dy * dy * dy;
+
+		sig_dxdxdxdx += dx * dx * dx * dx;
+		sig_dxdxdxdy += dx * dx * dx * dy;
+		sig_dxdxdydy += dx * dx * dy * dy;
+		sig_dxdydydy += dx * dy * dy * dy;
+		sig_dydydydy += dy * dy * dy * dy;
 	}
-	double det = sig_dxdx * sig_dydy - sig_dxdy * sig_dxdy;
-	u_dash[1] = (sig_dydy * sig_dxdu1 - sig_dxdy * sig_dydu1) / det;
-	u_dash[2] = (sig_dxdx * sig_dydu1 - sig_dxdy * sig_dxdu1) / det;
-	u_dash[3] = (sig_dydy * sig_dxdu2 - sig_dxdy * sig_dydu2) / det;
-	u_dash[4] = (sig_dxdx * sig_dydu2 - sig_dxdy * sig_dxdu2) / det;
-	/*fstream LSval("./Output/lsval.dat", fstream::app);
-	//if (log10(det) < -8)
-	LSval << e << "\t" << det << "\t" << log10(det) << "\n";
-	LSval.close();*/
-} //End of the function
+	matrix[0][5] = sig_dfdx;
+	matrix[1][5] = sig_dfdy;
+	matrix[2][5] = sig_dfdxdx / 2;
+	matrix[3][5] = sig_dfdydy / 2;
+	matrix[4][5] = sig_dfdxdy;
 
-/*
-Calculate derivatives of temperature at the wall face.
-This function uses the neighbours of edge 'e' formed by `void construct_neighbours()`
-*/
-double tp_derivatives(int *edge_nbs, int nbs, double *tp_dash, int lcell, int rcell, int e)
+	matrix[0][0] = sig_dxdx;
+	matrix[1][1] = sig_dydy;
+	matrix[2][2] = sig_dxdxdxdx / 4;
+	matrix[3][3] = sig_dydydydy / 4;
+	matrix[4][4] = sig_dxdxdydy;
+
+	matrix[0][1] = matrix[1][0] = sig_dxdy;
+	matrix[0][2] = matrix[2][0] = sig_dxdxdx / 2;
+	matrix[0][3] = matrix[3][0] = sig_dxdydy / 2;
+	matrix[0][4] = matrix[4][0] = sig_dxdxdy;
+
+	matrix[1][2] = matrix[2][1] = sig_dxdxdy / 2;
+	matrix[1][3] = matrix[3][1] = sig_dydydy / 2;
+	matrix[1][4] = matrix[4][1] = sig_dxdydy;
+
+	matrix[2][3] = matrix[3][2] = sig_dxdxdydy / 4;
+	matrix[2][4] = matrix[4][2] = sig_dxdxdxdy / 2;
+
+	matrix[3][4] = matrix[4][3] = sig_dxdydydy / 2;
+}
+
+void f_derivatives()
 {
-	static int fcount = 1;
-	double sig_dxdx, sig_dydy, sig_dxdy;
-	double sig_dxdtp, sig_dydtp; //Summation of (delta x (or y)) * (delta tp)
-	double tpref, det = 0;
-	sig_dxdx = sig_dxdy = sig_dydy = sig_dxdtp = sig_dydtp = 0;
-	if (lcell == 0)
+	for (int k = 1; k <= max_cells; k++)
 	{
-		tpref = cell[rcell].tp;
+		double matrix[5][6], *solution;
+		//Derivative of velocity
+		construct_equation(k, 'u', matrix);
+		solution = gauss_elimination(matrix);
+		cell[k].u1x = solution[0];
+		cell[k].u1y = solution[1];
+		delete[] solution;
+		construct_equation(k, 'v', matrix);
+		solution = gauss_elimination(matrix);
+		cell[k].u2x = solution[0];
+		cell[k].u2y = solution[1];
+		delete[] solution;
+		construct_equation(k, 't', matrix);
+		solution = gauss_elimination(matrix);
+		cell[k].tpx = solution[0];
+		cell[k].tpy = solution[1];
+		delete[] solution;
 	}
-	else if (rcell == 0)
-	{
-		tpref = cell[lcell].tp;
-	}
-	else
-	{
-		double w1 = sqrt(pow((cell[lcell].cx - edge[e].mx), 2) + pow((cell[lcell].cy - edge[e].my), 2)); //Distance between left cell center and edge midpoint
-		double w2 = sqrt(pow((cell[rcell].cx - edge[e].mx), 2) + pow((cell[rcell].cy - edge[e].my), 2)); //Distance between right cell center and edge midpoint
-		tpref = (w1 * cell[lcell].tp + w2 * cell[rcell].tp) / (w1 + w2);								 //Linear Interpolation
-	}
-	if (edge[e].status == 'w') //Boundary condition, adiabetic wall
-		tp_dash[1] = tp_dash[2] = 0;
-	else
-	{
-		for (int j = 1; j <= nbs; j++)
-		{
-			int p = edge_nbs[j];
-			double delx = cell[p].cx - edge[e].mx;
-			double dely = cell[p].cy - edge[e].my;
-			double dist = sqrt(delx * delx + dely * dely); //Distance between cell and edge midpoint
-			double w = 1 / pow(dist, 2.0);				   //Least Squares weight
-			double deltp = cell[p].tp - (tpref);
-
-			sig_dxdx = sig_dxdx + w * delx * delx;
-			sig_dydy = sig_dydy + w * dely * dely;
-			sig_dxdy = sig_dxdy + w * delx * dely;
-
-			sig_dxdtp = sig_dxdtp + w * delx * deltp;
-			sig_dydtp = sig_dydtp + w * dely * deltp;
-			/*if (e == 299)
-			{
-				cout << e << "\t" << delx << "\t" << dely << "\t" << sig_dxdx << "\t" << sig_dydy << "\t" << sig_dxdy << "\t" << sig_dxdtp << "\t" << sig_dydtp <<"\n";
-			}*/
-		}
-		det = sig_dxdx * sig_dydy - sig_dxdy * sig_dxdy;
-		tp_dash[1] = (sig_dydy * sig_dxdtp - sig_dxdy * sig_dydtp) / det;
-		tp_dash[2] = (sig_dxdx * sig_dydtp - sig_dxdy * sig_dxdtp) / det;
-		/*if (e == 299)
-		{
-			exit(0);
-		}*/
-		//fstream LSval("./Output/lsval.dat", fstream::app);
-
-		//LSval.close();
-	}
-	/*string title;
-	title = "./Output/CFL_.1/" + to_string(fcount) + "_tpder.dat";
-	fstream tpder(title, fstream::app);
-	tpder << "Edge Number: " << e << " dT/dx = " << tp_dash[1] << " dT/dy = " << tp_dash[2] << "\n";
-	tpder.close();
-	if (e == max_edges)
-		fcount++;*/
-	return tpref;
-} //End of the function
-
-int construct_neighbours(int *edge_nbs, int e, int lcell, int rcell, char status, int nbs)
-{
-	int flag, k = 0;
-	if (nbs == 6)
-	{
-		if (status == 'f')
-		{
-			edge_nbs[++k] = rcell;
-			for (int i = 0; i < cell[lcell].nbhs; i++)
-			{
-				for (int j = 0; j < cell[rcell].nbhs; j++)
-				{
-					if (cell[lcell].conn[i] == cell[rcell].conn[j])
-					{
-						edge_nbs[++k] = cell[lcell].conn[i];
-					}
-				}
-			}
-			edge_nbs[++k] = lcell;
-		}
-		else if (status == 'w')
-		{
-			for (int i = 0; i < cell[lcell].nbhs; i++)
-			{
-				edge_nbs[++k] = cell[lcell].conn[i];
-			}
-			edge_nbs[++k] = lcell;
-		}
-		else if (status == 'o')
-		{
-			for (int i = 0; i < cell[rcell].nbhs; i++)
-			{
-				edge_nbs[++k] = cell[rcell].conn[i];
-			}
-			edge_nbs[++k] = rcell;
-		}
-	}
-	else if (nbs == 8)
-	{
-		for (int i = 0; i < cell[lcell].nbhs; i++)
-		{
-			flag = 0;
-			for (int j = 0; j < cell[rcell].nbhs; j++)
-			{
-				if ((cell[lcell].conn[i] == cell[rcell].conn[j]))
-				{
-					flag = 1;
-				}
-			}
-			if (flag == 1)
-				continue;
-			else
-			{
-				edge_nbs[++k] = cell[lcell].conn[i];
-			}
-		}
-		for (int i = 0; i < cell[rcell].nbhs; i++)
-		{
-			edge_nbs[++k] = cell[rcell].conn[i];
-		}
-	}
-	return k;
 }
 
 void viscous_flux(double *G, double nx, double ny, int e, char status)
 {
-	int *edge_nbs;
 	int lcell, rcell;
 	double uref[3], u_dash[5], tp_dash[3];
 	double tauxx, tauyy, tauxy, t_ref, mu, kappa;
@@ -335,40 +283,40 @@ void viscous_flux(double *G, double nx, double ny, int e, char status)
 	kappa = mu * (gma * R) / (Prandtl_number * (gma - 1));
 	lcell = edge[e].lcell;
 	rcell = edge[e].rcell;
+	double u_inf = sqrt(gma * R * 288.20);
+	double theta = aoa * pi / 180;
 
-	int nbs = 6;
-	if (status == 'f')
-	{
-		if ((cell[lcell].nbhs == 5) && (cell[rcell].nbhs == 5))
-			nbs = 8;
-	}
-	edge_nbs = new int[nbs + 1];
-	int k = construct_neighbours(edge_nbs, e, lcell, rcell, status, nbs);
-	if (k != 6 && k != 8)
-	{
-		cout << "Error in construct_neighbours(...). k = " << k << ", e = " << e << endl;
-		exit(0);
-	}
+	double w1 = sqrt(pow((cell[lcell].cx - edge[e].mx), 2) + pow((cell[lcell].cy - edge[e].my), 2)); //Distance between left cell center and edge midpoint
+	double w2 = sqrt(pow((cell[rcell].cx - edge[e].mx), 2) + pow((cell[rcell].cy - edge[e].my), 2)); //Distance between right cell center and edge midpoint
+	t_ref = (w1 * cell[lcell].tp + w2 * cell[rcell].tp) / (w1 + w2);
+	uref[1] = (w1 * cell[lcell].u1 + w2 * cell[rcell].u1) / (w1 + w2);
+	uref[2] = (w1 * cell[lcell].u2 + w2 * cell[rcell].u2) / (w1 + w2);
 
-	//Calculating flux
-	u_derivatives(edge_nbs, nbs, uref, u_dash, lcell, rcell, e);
-	t_ref = tp_derivatives(edge_nbs, nbs, tp_dash, lcell, rcell, e);
-	//shear_stress(tauxx, tauyy, tauxy, u_dash);
+	u_dash[1] = (w1 * cell[lcell].u1x + w2 * cell[rcell].u1x) / (w1 + w2);
+	u_dash[2] = (w1 * cell[lcell].u1y + w2 * cell[rcell].u1y) / (w1 + w2);
+	u_dash[3] = (w1 * cell[lcell].u2x + w2 * cell[rcell].u2x) / (w1 + w2);
+	u_dash[4] = (w1 * cell[lcell].u2y + w2 * cell[rcell].u2y) / (w1 + w2);
+
 	tauxx = mu * (4 / 3 * u_dash[1] - 2 / 3 * u_dash[4]);
 	tauyy = mu * (4 / 3 * u_dash[4] - 2 / 3 * u_dash[1]);
 	tauxy = mu * (u_dash[2] + u_dash[3]);
 
 	//Storing viscous fluxes
-	tp_dash[1] = tp_dash[2] = 0;
 	if (status == 'w')
 	{
 		uref[1] = uref[2] = 0;
+		tp_dash[1] = tp_dash[2] = 0;
+	}
+	else if (status == 'o')
+	{
+		uref[1] = u_inf * Mach * cos(theta);
+		uref[2] = u_inf * Mach * sin(theta);
 	}
 	G[1] = 0;
 	G[2] = -(tauxx * nx + tauxy * ny);
 	G[3] = -(tauxy * nx + tauyy * ny);
 	G[4] = -((uref[1] * tauxx + uref[2] * tauxy + kappa * tp_dash[1]) * nx) + ((uref[1] * tauxy + uref[2] * tauyy + kappa * tp_dash[2]) * ny);
-	delete[] edge_nbs;
+	//delete[] edge_nbs;
 }
 
 //Fluxes are evaluated in this function
@@ -435,16 +383,12 @@ void evaluate_flux()
 				lcell = rcell;
 			}
 
-			//linear_reconstruction(lprim, lcell, k);
+			linear_reconstruction(lprim, lcell, k);
 
-			rhol = cell[lcell].rho;
-			u1l = cell[lcell].u1;
-			u2l = cell[lcell].u2;
-			prl = cell[lcell].pr;
-			/*rhol = lprim[1];
+			rhol = lprim[1];
 			u1l = lprim[2];
 			u2l = lprim[3];
-			prl = lprim[4];*/
+			prl = lprim[4];
 
 			KFVS_wall_flux(Gwall, nx, ny, rhol, u1l, u2l, prl);
 			viscous_flux(Gd, nx, ny, k, status);
