@@ -2,19 +2,20 @@
 #include <cmath>
 
 using namespace std;
+const int dim = 3;
 
-double * gauss_elimination(double matrix[5][6])
+double gauss_elimination(double matrix[dim][(dim + 1)], double solution[dim])
 {
     int i, j, k;
-    double solution[5];
+    //double solution[dim];
     double swap;
     //Pivot the matrix for diagonal dominance
-    for (i = 0; i < 5; i++)
+    for (i = 0; i < dim; i++)
     {
         solution[i] = 0;
         double max = fabs(matrix[i][i]);
         int pos = i;
-        for (j = i; j < 5; j++)
+        for (j = i; j < dim; j++)
         {
             if (fabs(matrix[j][i]) > max)
             {
@@ -23,7 +24,7 @@ double * gauss_elimination(double matrix[5][6])
             }
         }
         //Swap the elements
-        for (k = 0; k <= 5; k++)
+        for (k = 0; k <= dim; k++)
         {
             swap = matrix[i][k];
             matrix[i][k] = matrix[pos][k];
@@ -31,36 +32,37 @@ double * gauss_elimination(double matrix[5][6])
         }
     }
     //Convert the matrix to a lower triangle matrix
-    for (i = 4; i > 0; i--)
+    for (i = (dim - 1); i > 0; i--)
         for (j = i - 1; j >= 0; j--)
-            for (k = 5; k >= 0; k--)
+            for (k = dim; k >= 0; k--)
                 matrix[j][k] -= (matrix[j][i] / matrix[i][i]) * matrix[i][k];
 
-    solution[0] = matrix[0][5] / matrix[0][0];
-    for(i = 1; i < 5; i++)
+    solution[0] = matrix[0][dim] / matrix[0][0];
+    for(i = 1; i < dim; i++)
     {
-        solution[i] = matrix[i][5];
+        solution[i] = matrix[i][dim];
         for (j = i - 1; j >= 0; j--)
         {
             solution[i] -= (solution[j] * matrix[i][j]);
         }
         solution[i] = solution[i] / matrix[i][i];
     }
-    return solution;
+    //return solution;
 }
 
 int main()
 {
-    double matrix[5][6] = {{1, 2, 3, 4, 5, 6},{2, 3, 4, 5, 6, 7},{3, 4, 5, 6, 7, 8},{4, 5, 6, 7, 8, 9},{5, 6, 7, 8, 9, 10}};
-    double * sol;
+    double matrix[dim][(dim + 1)] = {{4, 1, 1, 10}, {1, 4, 1, 10}, {1, 1, 4, 10}};
+    // = {{1, 2, 3, 4, 5, 6},{2, 3, 4, 5, 6, 7},{3, 4, 5, 6, 7, 8},{4, 5, 6, 7, 8, 9},{5, 6, 7, 8, 9, 10}};
+    double sol[dim] = {0, 0, 0};
     double fx, fy, fxx, fyy, fxy;
-    sol = gauss_elimination(matrix);
-    fx = sol[0];
+    gauss_elimination(matrix, sol);
+    /*fx = sol[0];
     fy = sol[1];
     fxx = sol[2];
     fyy = sol[3];
-    fxy = sol[4];
-    for (int i = 0; i < 5; i++)
+    fxy = sol[4];*/
+    for (int i = 0; i < dim; i++)
         cout << sol[i] << ", ";
     cout <<endl;
     return 0;
