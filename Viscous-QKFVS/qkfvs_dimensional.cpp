@@ -286,16 +286,41 @@ void viscous_flux(double *G, double nx, double ny, int e, char status)
 	double u_inf = sqrt(gma * R * 288.20);
 	double theta = aoa * pi / 180;
 
-	double w1 = sqrt(pow((cell[lcell].cx - edge[e].mx), 2) + pow((cell[lcell].cy - edge[e].my), 2)); //Distance between left cell center and edge midpoint
-	double w2 = sqrt(pow((cell[rcell].cx - edge[e].mx), 2) + pow((cell[rcell].cy - edge[e].my), 2)); //Distance between right cell center and edge midpoint
-	t_ref = (w1 * cell[lcell].tp + w2 * cell[rcell].tp) / (w1 + w2);
-	uref[1] = (w1 * cell[lcell].u1 + w2 * cell[rcell].u1) / (w1 + w2);
-	uref[2] = (w1 * cell[lcell].u2 + w2 * cell[rcell].u2) / (w1 + w2);
+	if (lcell == 0)
+	{
+		t_ref = cell[rcell].tp;
+		uref[1] = cell[rcell].u1;
+		uref[2] = (cell[rcell].u2);
 
-	u_dash[1] = (w1 * cell[lcell].u1x + w2 * cell[rcell].u1x) / (w1 + w2);
-	u_dash[2] = (w1 * cell[lcell].u1y + w2 * cell[rcell].u1y) / (w1 + w2);
-	u_dash[3] = (w1 * cell[lcell].u2x + w2 * cell[rcell].u2x) / (w1 + w2);
-	u_dash[4] = (w1 * cell[lcell].u2y + w2 * cell[rcell].u2y) / (w1 + w2);
+		u_dash[1] = (cell[rcell].u1x);
+		u_dash[2] = (cell[rcell].u1y);
+		u_dash[3] = (cell[rcell].u2x);
+		u_dash[4] = (cell[rcell].u2y);
+	}
+	else if (rcell == 0)
+	{
+		t_ref = cell[lcell].tp;
+		uref[1] = cell[lcell].u1;
+		uref[2] = (cell[lcell].u2);
+
+		u_dash[1] = (cell[lcell].u1x);
+		u_dash[2] = (cell[lcell].u1y);
+		u_dash[3] = (cell[lcell].u2x);
+		u_dash[4] = (cell[lcell].u2y);
+	}
+	else
+	{
+		double w1 = sqrt(pow((cell[lcell].cx - edge[e].mx), 2) + pow((cell[lcell].cy - edge[e].my), 2)); //Distance between left cell center and edge midpoint
+		double w2 = sqrt(pow((cell[rcell].cx - edge[e].mx), 2) + pow((cell[rcell].cy - edge[e].my), 2)); //Distance between right cell center and edge midpoint
+		t_ref = (w1 * cell[lcell].tp + w2 * cell[rcell].tp) / (w1 + w2);
+		uref[1] = (w1 * cell[lcell].u1 + w2 * cell[rcell].u1) / (w1 + w2);
+		uref[2] = (w1 * cell[lcell].u2 + w2 * cell[rcell].u2) / (w1 + w2);
+
+		u_dash[1] = (w1 * cell[lcell].u1x + w2 * cell[rcell].u1x) / (w1 + w2);
+		u_dash[2] = (w1 * cell[lcell].u1y + w2 * cell[rcell].u1y) / (w1 + w2);
+		u_dash[3] = (w1 * cell[lcell].u2x + w2 * cell[rcell].u2x) / (w1 + w2);
+		u_dash[4] = (w1 * cell[lcell].u2y + w2 * cell[rcell].u2y) / (w1 + w2);
+	}
 
 	tauxx = mu * (4 / 3 * u_dash[1] - 2 / 3 * u_dash[4]);
 	tauyy = mu * (4 / 3 * u_dash[4] - 2 / 3 * u_dash[1]);
