@@ -120,6 +120,8 @@ void input_data()
 	for (int k = 1; k <= max_cells; k++)
 	{
 		infile >> cell[k].cx >> cell[k].cy >> cell[k].rho >> cell[k].u1 >> cell[k].u2 >> cell[k].pr >> cell[k].area >> cell[k].noe;
+		/*if (k <= (298 * 12))
+			cell[k].u1 = 0;*/
 		cell[k].tp = cell[k].pr / (R * cell[k].rho);
 		//Set enclosing edges
 		cell[k].edge = new int[cell[k].noe + 1];
@@ -637,6 +639,8 @@ double func_delt(int k)
 		temp2 = length * temp2;
 		delt_inv = delt_inv + temp2;
 	}
+	double mu = 1.458E-6 * pow(cell[k].tp, 1.5) / (cell[k].tp + 110.4);
+
 	delt_inv = 2.0 * area / delt_inv;
 	delt_visc = rho * ((gma * R) / (gma - 1)) * smin * smin / (0.096 * gma);
 	double delt = 1 / ((1 / delt_inv) + (1 / delt_visc));
@@ -1090,6 +1094,7 @@ void get_LdU(int k, double *L)
 
 	double length, nx, ny, rho, u1, u2, pr, a;
 	double dG[5];
+	double mu = 1.458E-6 * pow(cell[k].tp, 1.5) / (cell[k].tp + 110.4);
 
 	for (int r = 1; r <= 4; r++)
 		L[r] = 0.0;
@@ -1099,6 +1104,9 @@ void get_LdU(int k, double *L)
 		int e = cell[k].edge[r];
 		length = edge[e].length;
 		int nbh = edge[e].rcell;
+		double delx = (nbh == k ? cell[edge[e].lcell].cx : cell[nbh].cx) - cell[k].cx;
+		double dely = (nbh == k ? cell[edge[e].lcell].cy : cell[nbh].cy) - cell[k].cy;
+		double h = sqrt(pow(delx * nx, 2) + pow(dely * ny, 2));
 
 		nx = edge[e].nx;
 		ny = edge[e].ny;
@@ -1121,7 +1129,7 @@ void get_LdU(int k, double *L)
 			pr = cell[nbh].pr;
 			a = sqrt(gma * pr / rho);
 
-			double sr = fabs(u1 * nx + u2 * ny) + a;
+			double sr = fabs(u1 * nx + u2 * ny) + a;// + (mu / (rho * h));
 
 			get_delG(nbh, nx, ny, dG, 'f');
 
@@ -1143,6 +1151,7 @@ void get_UdU(int k, double *U)
 
 	double rho, u1, u2, pr, a, length;
 	double nx, ny, dG[5];
+	double mu = 1.458E-6 * pow(cell[k].tp, 1.5) / (cell[k].tp + 110.4);
 
 	for (int r = 1; r <= 4; r++)
 		U[r] = 0.0;
@@ -1152,6 +1161,9 @@ void get_UdU(int k, double *U)
 		int e = cell[k].edge[r];
 		length = edge[e].length;
 		int nbh = edge[e].rcell;
+		double delx = (nbh == k ? cell[edge[e].lcell].cx : cell[nbh].cx) - cell[k].cx;
+		double dely = (nbh == k ? cell[edge[e].lcell].cy : cell[nbh].cy) - cell[k].cy;
+		double h = sqrt(pow(delx * nx, 2) + pow(dely * ny, 2));
 
 		nx = edge[e].nx;
 		ny = edge[e].ny;
@@ -1173,8 +1185,7 @@ void get_UdU(int k, double *U)
 			u2 = cell[nbh].u2;
 			pr = cell[nbh].pr;
 			a = sqrt(gma * pr / rho);
-
-			double sr = fabs(u1 * nx + u2 * ny) + a;
+			double sr = fabs(u1 * nx + u2 * ny) + a;// + (mu / (rho * h));
 
 			get_delG(nbh, nx, ny, dG, 'b');
 
@@ -1205,6 +1216,7 @@ double get_D_inv(int k)
 	u2 = cell[k].u2;
 	pr = cell[k].pr;
 	a = sqrt(gma * pr / rho); //a is the nondimensionalised local speed of sound;
+	double mu = 1.458E-6 * pow(cell[k].tp, 1.5) / (cell[k].tp + 110.4);
 
 	for (int r = 1; r <= cell[k].noe; r++)
 	{
@@ -1223,9 +1235,6 @@ double get_D_inv(int k)
 			nx = -nx;
 			ny = -ny;
 		}
-		double t_ref = cell[k].tp;
-		double mu = 1.458E-6 * pow(t_ref, 1.5) / (t_ref + 110.4);
-
 		temp = temp + (fabs(u1 * nx + u2 * ny) + a + (mu / (rho * h))) * length;
 	}
 	temp = (area / delt) + 0.5 * temp;
