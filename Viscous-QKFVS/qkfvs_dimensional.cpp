@@ -113,8 +113,6 @@ void input_data()
 	for (int k = 1; k <= max_edges; k++)
 	{
 		infile >> edge[k].mx >> edge[k].my >> edge[k].lcell >> edge[k].rcell >> edge[k].status >> edge[k].nx >> edge[k].ny >> edge[k].length;
-		if (edge[k].status == 'w')
-			edge[k].status = 'o';
 	}
 	//Input Cell data
 	infile >> max_cells;
@@ -403,7 +401,7 @@ void evaluate_flux()
 
 			KFVS_pos_flux(Gp, nx, ny, rhol, u1l, u2l, prl);
 			KFVS_neg_flux(Gn, nx, ny, rhor, u1r, u2r, prr);
-			//viscous_flux(Gd, nx, ny, k, status);
+			viscous_flux(Gd, nx, ny, k, status);
 			for (int r = 1; r <= 4; r++)
 			{
 				cell[lcell].flux[r] = cell[lcell].flux[r] + s * (*(Gp + r) + *(Gn + r) + *(Gd + r));
@@ -428,7 +426,7 @@ void evaluate_flux()
 			prl = lprim[4];
 
 			KFVS_wall_flux(Gwall, nx, ny, rhol, u1l, u2l, prl);
-			//viscous_flux(Gd, nx, ny, k, status);
+			viscous_flux(Gd, nx, ny, k, status);
 			for (int r = 1; r <= 4; r++)
 				cell[lcell].flux[r] = cell[lcell].flux[r] + s * (*(Gwall + r) + *(Gd + r));
 		}
@@ -450,7 +448,7 @@ void evaluate_flux()
 			prl = lprim[4];
 
 			KFVS_outer_flux(Gout, nx, ny, rhol, u1l, u2l, prl);
-			//viscous_flux(Gd, nx, ny, k, status);
+			viscous_flux(Gd, nx, ny, k, status);
 			for (int r = 1; r <= 4; r++)
 				cell[lcell].flux[r] = cell[lcell].flux[r] + s * (*(Gout + r) + *(Gd + r));
 		}
@@ -522,7 +520,6 @@ Reference Location: ../References/Kinetic_Flux_Vector_Splitting/
 */
 void KFVS_wall_flux(double *G, double nx, double ny, double rho, double u1, double u2, double pr)
 {
-	cout <<"called";
 	double un, ut;
 	ut = 0.0; //No slip boundary condition
 	un = 0.0;
