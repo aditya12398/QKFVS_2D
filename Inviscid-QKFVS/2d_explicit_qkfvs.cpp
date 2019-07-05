@@ -10,6 +10,7 @@ Strongly Recommended: Use Visual Studio Code(text editor) while understanding th
 #include <cmath>
 #include <string>
 
+using namespace std;
 int max_edges, max_cells, max_iters;
 double Mach, aoa, cfl, limiter_const;
 double residue, max_res; //RMS Residue and maximum residue in the fluid domain
@@ -31,7 +32,6 @@ struct Cell
 	double area, cx, cy; //Area of the cell and cell centre coordinates
 	double rho, u1, u2, pr; //Values of density, x - velocity, y - velocity and pressure of the cell
 	double flux[5]; //Kinetic Fluxes. Reference: See function `void KFVS_pos_flux(...)`
-	double Upold[5], Upnew[5]; //Corresponds to void forward_sweep()
 	double Unew[5], Uold[5]; //Corresponds to void backward_sweep()
 	int alias, cell_with_alias_k; //Aliasing of cells for implicitisation
 	double q[5], qx[5], qy[5]; //Entropy Variables. Reference: See Boltzmann Equations
@@ -44,22 +44,18 @@ struct Cell *cell;
 int main(int arg, char *argv[])
 {
 	void input_data();
-	void aliasing();
 	void initial_conditions();
 	void q_variables();
 	void q_derivatives();
 	void evaluate_flux();
-	void forward_sweep();
-	void backward_sweep();
 	void state_update();
 	void print_output();
 	void write_tecplot();
-	std::ofstream outfile("residue");
+	ofstream outfile("residue");
 
 	double res_old;
 
 	input_data();
-	aliasing();
 
 	int T = 250;
 	for (int t = 1; t <= max_iters; t++)
@@ -69,19 +65,17 @@ int main(int arg, char *argv[])
 		q_derivatives();
 
 		evaluate_flux();
-		forward_sweep();
-		backward_sweep();
 		state_update();
 
 		if (t == 1)
 			res_old = residue;
 		residue = log10(residue / res_old);
 		if ((residue) < -12) {
-			std::cout << "Convergence criteria reached.\n";
+			cout << "Convergence criteria reached.\n";
 			break;
 		}
-		std::cout << t << "\t" << residue << "\t" << max_res << "\t" << max_res_cell << std::endl;
-		outfile << t << "\t" << residue << "\t" << max_res << "\t" << max_res_cell << std::endl;
+		cout << t << "\t" << residue << "\t" << max_res << "\t" << max_res_cell << endl;
+		outfile << t << "\t" << residue << "\t" << max_res << "\t" << max_res_cell << endl;
 
 		if (t == T)
 		{
@@ -100,8 +94,8 @@ Flow Parameters: flow-parameters-qkfvs
 */
 void input_data()
 {
-	std::ifstream infile("2order-input-data");
-	std::ifstream infile2("flow-parameters-qkfvs");
+	ifstream infile("2order-input-data");
+	ifstream infile2("flow-parameters-qkfvs");
 
 	infile2 >> Mach >> aoa >> cfl >> max_iters >> limiter_const;
 	//Input Edge data
@@ -438,8 +432,6 @@ void initial_conditions()
 			cell[k].flux[r] = 0.0;
 			cell[k].Uold[r] = U[r];
 			cell[k].Unew[r] = U[r];
-			cell[k].Upold[r] = U[r];
-			cell[k].Upnew[r] = U[r];
 		}
 	}
 } //End of the function
@@ -462,9 +454,8 @@ void state_update()
 
 		for (int r = 1; r <= 4; r++)
 		{
-			//cell[k].Unew[r] = cell[k].Uold[r] - func_delt(k) * cell[k].flux[r] / cell[k].area;
+			cell[k].Unew[r] = cell[k].Uold[r] - func_delt(k) * cell[k].flux[r] / cell[k].area;
 			U[r] = cell[k].Unew[r];
-			cell[k].Upold[r] = cell[k].Upnew[r];
 			cell[k].Uold[r] = cell[k].Unew[r];
 		}
 
@@ -483,8 +474,8 @@ void state_update()
 } //End of the function
 void write_tecplot()
 {
-    std::string title = "Solution_Tecplot_Implicit.dat";
-    std::ofstream tecplotfile("./" + title);
+    string title = "Solution_Tecplot_Implicit.dat";
+    ofstream tecplotfile("./" + title);
     tecplotfile << "TITLE: \"QKFVS Viscous Code - NAL\"\n";
     tecplotfile << "VARIABLES= \"X\", \"Y\", \"Density\", \"Pressure\", \"x-velocity\", \"y-velocity\", \"Velocity Magnitude\"\n";
     tecplotfile << "ZONE I= 160 J= 59 , DATAPACKING=BLOCK\n";
@@ -556,9 +547,9 @@ void write_tecplot()
 //Function which prints the final primitive vector into the file "primitive-vector.dat"
 void print_output()
 {
-	std::ofstream outfile("primitive-vector_implicit.dat");
+	ofstream outfile("primitive-vector_implicit.dat");
 	for (int k = 1; k <= max_cells; k++)
-		outfile << k << "\t" << cell[k].rho << "\t" << cell[k].u1 << "\t" << cell[k].u2 << "\t" << cell[k].pr << std::endl;
+		outfile << k << "\t" << cell[k].rho << "\t" << cell[k].u1 << "\t" << cell[k].u2 << "\t" << cell[k].pr << endl;
 } //End of the function
 
 /*
@@ -791,298 +782,4 @@ double smallest_dist(int k)
 			min = ds;
 	}
 	return (ds);
-} //End of the function
-
-/*Implicit part of the code starts from here*/
-//Function to find the forward sweep
-void forward_sweep()
-{
-	double get_D_inv(int);
-	void get_LdU(int, double *);
-	double D_inv, LdU[5], temp;
-
-	for (int k = 1; k <= max_cells; k++)
-	{
-		int CELL = cell[k].cell_with_alias_k;
-
-		D_inv = get_D_inv(CELL);
-
-		get_LdU(CELL, LdU);
-
-		for (int r = 1; r <= 4; r++)
-		{
-			temp = cell[CELL].flux[r] + LdU[r];
-			temp = -D_inv * temp;
-
-			cell[CELL].Upnew[r] = cell[CELL].Upold[r] + temp;
-		}
-	}
-} //End of the function
-
-//Function to find the backward sweep
-void backward_sweep()
-{
-	double get_D_inv(int);
-	void get_UdU(int, double *);
-	double D_inv, UdU[5], temp;
-
-	for (int k = max_cells; k >= 1; k--)
-	{
-		int CELL = cell[k].cell_with_alias_k;
-
-		D_inv = get_D_inv(CELL);
-
-		get_UdU(CELL, UdU);
-
-		for (int r = 1; r <= 4; r++)
-		{
-			temp = cell[CELL].Upnew[r] - cell[CELL].Upold[r];
-			temp = temp - D_inv * UdU[r];
-
-			cell[CELL].Unew[r] = cell[CELL].Uold[r] + temp;
-		}
-	}
-} //End of the function
-//Lower Upper Symmetric Gauss Seidel splitting in lower triangular matrix
-void get_LdU(int k, double *L)
-{
-	void get_delG(int, double, double, double *, char);
-
-	double length, nx, ny, rho, u1, u2, pr, a;
-	double dG[5];
-
-	for (int r = 1; r <= 4; r++)
-		L[r] = 0.0;
-
-	for (int r = 1; r <= cell[k].noe; r++)
-	{
-		int e = cell[k].edge[r];
-		length = edge[e].length;
-		int nbh = edge[e].rcell;
-
-		nx = edge[e].nx;
-		ny = edge[e].ny;
-
-		if (nbh == k)
-		{
-			nx = -nx;
-			ny = -ny;
-			nbh = edge[e].lcell;
-		}
-
-		int alias_of_k = cell[k].alias;
-		int alias_of_nbh = cell[nbh].alias;
-
-		if (nbh != 0 && alias_of_nbh < alias_of_k)
-		{
-			rho = cell[nbh].rho;
-			u1 = cell[nbh].u1;
-			u2 = cell[nbh].u2;
-			pr = cell[nbh].pr;
-			a = sqrt(1.4 * pr / rho);
-
-			double sr = fabs(u1 * nx + u2 * ny) + a;
-
-			get_delG(nbh, nx, ny, dG, 'f');
-
-			for (int j = 1; j <= 4; j++)
-			{
-				double temp = cell[nbh].Upnew[j] - cell[nbh].Upold[j];
-				temp = sr * temp;
-				temp = dG[j] - temp;
-				temp = temp * length;
-				L[j] = L[j] + 0.5 * temp;
-			}
-		}
-	}
-} //End of the function
-//Lower Upper Symmetric Gauss Seidel splitting in upper triangular matrix
-void get_UdU(int k, double *U)
-{
-	void get_delG(int, double, double, double *, char);
-
-	double rho, u1, u2, pr, a, length;
-	double nx, ny, dG[5];
-
-	for (int r = 1; r <= 4; r++)
-		U[r] = 0.0;
-
-	for (int r = 1; r <= cell[k].noe; r++)
-	{
-		int e = cell[k].edge[r];
-		length = edge[e].length;
-		int nbh = edge[e].rcell;
-
-		nx = edge[e].nx;
-		ny = edge[e].ny;
-
-		if (nbh == k)
-		{
-			nx = -nx;
-			ny = -ny;
-			nbh = edge[e].lcell;
-		}
-
-		int alias_of_k = cell[k].alias;
-		int alias_of_nbh = cell[nbh].alias;
-
-		if (nbh != 0 && alias_of_nbh > alias_of_k)
-		{
-			rho = cell[nbh].rho;
-			u1 = cell[nbh].u1;
-			u2 = cell[nbh].u2;
-			pr = cell[nbh].pr;
-			a = sqrt(1.4 * pr / rho);
-
-			double sr = fabs(u1 * nx + u2 * ny) + a;
-
-			get_delG(nbh, nx, ny, dG, 'b');
-
-			for (int j = 1; j <= 4; j++)
-			{
-				double temp = cell[nbh].Unew[j] - cell[nbh].Uold[j];
-				temp = sr * temp;
-				temp = dG[j] - temp;
-				temp = temp * length;
-				U[j] = U[j] + 0.5 * temp;
-			}
-		}
-	}
-} //End of the function
-
-double get_D_inv(int k)
-{
-	double func_delt(int);
-	double area, delt, temp = 0.0;
-	int e, nbh;
-	double length, rho, u1, u2, pr, a;
-	double nx, ny;
-
-	area = cell[k].area;
-	delt = func_delt(k);
-
-	rho = cell[k].rho;
-	u1 = cell[k].u1;
-	u2 = cell[k].u2;
-	pr = cell[k].pr;
-
-	a = sqrt(1.4 * pr / rho); //a is the speed of sound; 1.4 is the value of gamma
-
-	for (int r = 1; r <= cell[k].noe; r++)
-	{
-		e = cell[k].edge[r];
-		length = edge[e].length;
-		nbh = edge[e].rcell;
-
-		nx = edge[e].nx;
-		ny = edge[e].ny;
-
-		if (nbh == k)
-		{
-			nx = -nx;
-			ny = -ny;
-		}
-
-		double sr = fabs(u1 * nx + u2 * ny) + a;
-
-		temp = temp + sr * length;
-	}
-	temp = (area / delt) + 0.5 * temp;
-	return (1.0 / temp);
-} //End of the function
-
-//Function to get delG
-void get_delG(int k, double nx, double ny, double *dG, char status)
-{
-	void get_G(double, double, double *, double *);
-	double U[5], Gold[5], Gnew[5];
-
-	if (status == 'f')
-	{
-		for (int r = 1; r <= 4; r++)
-			U[r] = cell[k].Upold[r];
-		get_G(nx, ny, U, Gold);
-
-		for (int r = 1; r <= 4; r++)
-			U[r] = cell[k].Upnew[r];
-		get_G(nx, ny, U, Gnew);
-	}
-	else if (status == 'b')
-	{
-		for (int r = 1; r <= 4; r++)
-			U[r] = cell[k].Uold[r];
-		get_G(nx, ny, U, Gold);
-
-		for (int r = 1; r <= 4; r++)
-			U[r] = cell[k].Unew[r];
-		get_G(nx, ny, U, Gnew);
-	}
-
-	for (int r = 1; r <= 4; r++)
-		dG[r] = Gnew[r] - Gold[r];
-} //End of the function
-
-//Function to get the G_normal vector
-void get_G(double nx, double ny, double *U, double *G)
-{
-	double rho, u1, u2, pr;
-
-	double U1 = *(U + 1);
-	double U2 = *(U + 2);
-	double U3 = *(U + 3);
-	double U4 = *(U + 4);
-
-	rho = U1;
-	double temp = 1 / U1;
-
-	u1 = U2 * temp;
-	u2 = U3 * temp;
-	temp = U4 - (0.5 * temp) * (U2 * U2 + U3 * U3);
-
-	pr = 0.4 * temp;
-    G[1] = rho * (u1 * nx + u2 * ny);
-    G[2] = (pr + rho * u1 * u1) * nx + rho * u1 * u2 * ny;
-    G[3] = (pr + rho * u2 * u2) * ny + rho * u1 * u2 * nx;
-    double e = 2.5 * pr / rho + (0.5 * (u1 * u1 + u2 * u2));
-    G[4] = (pr + rho * e) * (u1 * nx + u2 * ny);
-} //End of the function
-
-//Aliasing the cell numbers
-void aliasing()
-{
-	int count = 1;
-	int e, rcell, lcell;
-
-	for (int k = 2 /*1*/; k <= max_cells; k++)
-	{
-		cell[k].alias = 0;			   //Alias number of cell k
-		cell[k].cell_with_alias_k = 0; //Cell number with alias = k
-	}
-
-	cell[1].alias = 1;
-	cell[1].cell_with_alias_k = 1;
-
-	for (int k = 1; k <= max_cells; k++)
-	{
-		int CELL = cell[k].cell_with_alias_k;
-		for (int r = 1; r <= cell[CELL].noe; r++)
-		{
-			e = cell[CELL].edge[r];
-
-			rcell = edge[e].rcell;
-			lcell = edge[e].lcell;
-
-			if (rcell == CELL)
-				rcell = lcell;
-			if (rcell != 0)
-			{
-				if (cell[rcell].alias == 0)
-				{
-					//count = count + 1;
-					cell[rcell].alias = ++count;
-					cell[count].cell_with_alias_k = rcell;
-				}
-			}
-		}
-	}
 } //End of the function
