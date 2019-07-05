@@ -51,7 +51,7 @@ int main(int arg, char *argv[])
 	void state_update();
 	void print_output();
 	void write_tecplot();
-	ofstream outfile("residue");
+	ofstream outfile("residue_explicit");
 
 	double res_old;
 
@@ -474,7 +474,7 @@ void state_update()
 } //End of the function
 void write_tecplot()
 {
-    string title = "Solution_Tecplot_Implicit.dat";
+    string title = "Solution_Tecplot_Explicit.dat";
     ofstream tecplotfile("./" + title);
     tecplotfile << "TITLE: \"QKFVS Viscous Code - NAL\"\n";
     tecplotfile << "VARIABLES= \"X\", \"Y\", \"Density\", \"Pressure\", \"x-velocity\", \"y-velocity\", \"Velocity Magnitude\"\n";
@@ -547,7 +547,7 @@ void write_tecplot()
 //Function which prints the final primitive vector into the file "primitive-vector.dat"
 void print_output()
 {
-	ofstream outfile("primitive-vector_implicit.dat");
+	ofstream outfile("primitive-vector_explicit.dat");
 	for (int k = 1; k <= max_cells; k++)
 		outfile << k << "\t" << cell[k].rho << "\t" << cell[k].u1 << "\t" << cell[k].u2 << "\t" << cell[k].pr << endl;
 } //End of the function
