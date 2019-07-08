@@ -273,75 +273,34 @@ void f_derivatives()
 	}
 }
 
-void viscous_flux(double *G, double nx, double ny, int e, char status)
+void viscous_flux(double *G, int e, double nx, double ny, int CELL, double rho_ref, double u1_ref, double u2_ref, double pr_ref)
 {
-	int lcell, rcell;
-	double uref[3], u_dash[5], tp_dash[3];
+	double u_dash[5], tp_dash[3];
 	double tauxx, tauyy, tauxy, t_ref, mu, kappa;
+	t_ref = pr_ref / (R * rho_ref);
 	mu = 1.458E-6 * pow(t_ref, 1.5) / (t_ref + 110.4);
 	kappa = mu * (gma * R) / (Prandtl_number * (gma - 1));
-	lcell = edge[e].lcell;
-	rcell = edge[e].rcell;
-	double u_inf = sqrt(gma * R * 288.20);
-	double theta = aoa * pi / 180;
 
-	if (lcell == 0)
-	{
-		t_ref = cell[rcell].tp;
-		uref[1] = cell[rcell].u1;
-		uref[2] = (cell[rcell].u2);
-
-		u_dash[1] = (cell[rcell].u1x);
-		u_dash[2] = (cell[rcell].u1y);
-		u_dash[3] = (cell[rcell].u2x);
-		u_dash[4] = (cell[rcell].u2y);
-	}
-	else if (rcell == 0)
-	{
-		t_ref = cell[lcell].tp;
-		uref[1] = cell[lcell].u1;
-		uref[2] = (cell[lcell].u2);
-
-		u_dash[1] = (cell[lcell].u1x);
-		u_dash[2] = (cell[lcell].u1y);
-		u_dash[3] = (cell[lcell].u2x);
-		u_dash[4] = (cell[lcell].u2y);
-	}
-	else
-	{
-		double w1 = sqrt(pow((cell[lcell].cx - edge[e].mx), 2) + pow((cell[lcell].cy - edge[e].my), 2)); //Distance between left cell center and edge midpoint
-		double w2 = sqrt(pow((cell[rcell].cx - edge[e].mx), 2) + pow((cell[rcell].cy - edge[e].my), 2)); //Distance between right cell center and edge midpoint
-		t_ref = (w1 * cell[lcell].tp + w2 * cell[rcell].tp) / (w1 + w2);
-		uref[1] = (w1 * cell[lcell].u1 + w2 * cell[rcell].u1) / (w1 + w2);
-		uref[2] = (w1 * cell[lcell].u2 + w2 * cell[rcell].u2) / (w1 + w2);
-
-		u_dash[1] = (w1 * cell[lcell].u1x + w2 * cell[rcell].u1x) / (w1 + w2);
-		u_dash[2] = (w1 * cell[lcell].u1y + w2 * cell[rcell].u1y) / (w1 + w2);
-		u_dash[3] = (w1 * cell[lcell].u2x + w2 * cell[rcell].u2x) / (w1 + w2);
-		u_dash[4] = (w1 * cell[lcell].u2y + w2 * cell[rcell].u2y) / (w1 + w2);
-	}
-
+	u_dash[1] = (cell[CELL].u1x);
+	u_dash[2] = (cell[CELL].u1y);
+	u_dash[3] = (cell[CELL].u2x);
+	u_dash[4] = (cell[CELL].u2y);
+	tp_dash[1] = cell[CELL].tpx;
+	tp_dash[2] = cell[CELL].tpy;
 	tauxx = mu * (4 / 3 * u_dash[1] - 2 / 3 * u_dash[4]);
 	tauyy = mu * (4 / 3 * u_dash[4] - 2 / 3 * u_dash[1]);
 	tauxy = mu * (u_dash[2] + u_dash[3]);
 
 	//Storing viscous fluxes
-	if (status == 'w')
+	if (edge[e].status == 'w')
 	{
-		uref[1] = uref[2] = 0;
 		tp_dash[1] = tp_dash[2] = 0;
 	}
-	else if (status == 'o')
-	{
-		uref[1] = u_inf * Mach * cos(theta);
-		uref[2] = u_inf * Mach * sin(theta);
-	}
-	//tp_dash[1] = tp_dash[2] = 0;
 
 	G[1] = 0;
 	G[2] = -(tauxx * nx + tauxy * ny);
 	G[3] = -(tauxy * nx + tauyy * ny);
-	G[4] = -((uref[1] * tauxx + uref[2] * tauxy + kappa * tp_dash[1]) * nx) + ((uref[1] * tauxy + uref[2] * tauyy + kappa * tp_dash[2]) * ny);
+	G[4] = -((u1_ref * tauxx + u2_ref * tauxy + kappa * tp_dash[1]) * nx) + ((u1_ref * tauxy + u2_ref * tauyy + kappa * tp_dash[2]) * ny);
 }
 
 //Fluxes are evaluated in this function
@@ -391,7 +350,8 @@ void evaluate_flux()
 
 			KFVS_pos_flux(Gp, nx, ny, rhol, u1l, u2l, prl);
 			KFVS_neg_flux(Gn, nx, ny, rhor, u1r, u2r, prr);
-			viscous_flux(Gd, nx, ny, k, status);
+			viscous_flux(Gd, k, nx, ny, lcell, rhol, u1l, u2l, prl);
+			viscous_flux(Gd, k, nx, ny, rcell, rhor, u1r, u2r, prr);
 			for (int r = 1; r <= 4; r++)
 			{
 				cell[lcell].flux[r] = cell[lcell].flux[r] + s * (*(Gp + r) + *(Gn + r) + *(Gd + r));
@@ -416,7 +376,7 @@ void evaluate_flux()
 			prl = lprim[4];
 
 			KFVS_wall_flux(Gwall, nx, ny, rhol, u1l, u2l, prl);
-			viscous_flux(Gd, nx, ny, k, status);
+			viscous_flux(Gd, k, nx, ny, lcell, rhol, 0, 0, prl);
 			for (int r = 1; r <= 4; r++)
 				cell[lcell].flux[r] = cell[lcell].flux[r] + s * (*(Gwall + r) + *(Gd + r));
 		}
@@ -438,7 +398,7 @@ void evaluate_flux()
 			prl = lprim[4];
 
 			KFVS_outer_flux(Gout, nx, ny, rhol, u1l, u2l, prl);
-			viscous_flux(Gd, nx, ny, k, status);
+			viscous_flux(Gd, k, nx, ny, lcell, rhol, u1l, u2l, prl);
 			for (int r = 1; r <= 4; r++)
 				cell[lcell].flux[r] = cell[lcell].flux[r] + s * (*(Gout + r) + *(Gd + r));
 		}

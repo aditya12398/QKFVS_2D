@@ -100,7 +100,7 @@ Flow Parameters: flow-parameters-qkfvs
 */
 void input_data()
 {
-	std::ifstream infile("2order-input-data");
+	std::ifstream infile("ogrid_viscous");
 	std::ifstream infile2("flow-parameters-qkfvs");
 
 	infile2 >> Mach >> aoa >> cfl >> max_iters >> limiter_const;
@@ -483,75 +483,75 @@ void state_update()
 } //End of the function
 void write_tecplot()
 {
-    std::string title = "Solution_Tecplot_Implicit.dat";
-    std::ofstream tecplotfile("./" + title);
-    tecplotfile << "TITLE: \"QKFVS Viscous Code - NAL\"\n";
-    tecplotfile << "VARIABLES= \"X\", \"Y\", \"Density\", \"Pressure\", \"x-velocity\", \"y-velocity\", \"Velocity Magnitude\"\n";
-    tecplotfile << "ZONE I= 160 J= 59 , DATAPACKING=BLOCK\n";
-    for (int j = 1; j < 60; j++)
-    {
-        for (int i = 1; i <= 160; i++)
-        {
-            int k = (j - 1) * 160 + i;
-            tecplotfile << cell[k].cx << "\n";
-        }
-    }
-    tecplotfile << "\n";
-    for (int j = 1; j < 60; j++)
-    {
-        for (int i = 1; i <= 160; i++)
-        {
-            int k = (j - 1) * 160 + i;
-            tecplotfile << cell[k].cy << "\n";
-        }
-    }
-    tecplotfile << "\n";
-    for (int j = 1; j < 60; j++)
-    {
-        for (int i = 1; i <= 160; i++)
-        {
-            int k = (j - 1) * 160 + i;
-            tecplotfile << cell[k].rho << "\n";
-        }
-    }
-    tecplotfile << "\n";
-    for (int j = 1; j < 60; j++)
-    {
-        for (int i = 1; i <= 160; i++)
-        {
-            int k = (j - 1) * 160 + i;
-            tecplotfile << cell[k].pr << "\n";
-        }
-    }
-    tecplotfile << "\n";
-    for (int j = 1; j < 60; j++)
-    {
-        for (int i = 1; i <= 160; i++)
-        {
-            int k = (j - 1) * 160 + i;
-            tecplotfile << cell[k].u1 << "\n";
-        }
-    }
-    tecplotfile << "\n";
-    for (int j = 1; j < 60; j++)
-    {
-        for (int i = 1; i <= 160; i++)
-        {
-            int k = (j - 1) * 160 + i;
-            tecplotfile << cell[k].u2 << "\n";
-        }
-    }
-    tecplotfile << "\n";
-    for (int j = 1; j < 60; j++)
-    {
-        for (int i = 1; i <= 160; i++)
-        {
-            int k = (j - 1) * 160 + i;
-            tecplotfile << sqrt(pow(cell[k].u1, 2) + pow(cell[k].u2, 2)) << "\n";
-        }
-    }
-    tecplotfile << "\n";
-    tecplotfile.close();
+	std::string title = "Solution_Tecplot_Explicit_EU.dat";
+	std::ofstream tecplotfile("./" + title);
+	tecplotfile << "TITLE: \"QKFVS Viscous Code - NAL\"\n";
+	tecplotfile << "VARIABLES= \"X\", \"Y\", \"Density\", \"Pressure\", \"x-velocity\", \"y-velocity\", \"Velocity Magnitude\"\n";
+	tecplotfile << "ZONE I= 298 J= 179 , DATAPACKING=BLOCK\n";
+	for (int j = 1; j < 180; j++)
+	{
+		for (int i = 1; i <= 298; i++)
+		{
+			int k = (j - 1) * 298 + i;
+			tecplotfile << cell[k].cx << "\n";
+		}
+	}
+	tecplotfile << "\n";
+	for (int j = 1; j < 180; j++)
+	{
+		for (int i = 1; i <= 298; i++)
+		{
+			int k = (j - 1) * 298 + i;
+			tecplotfile << cell[k].cy << "\n";
+		}
+	}
+	tecplotfile << "\n";
+	for (int j = 1; j < 180; j++)
+	{
+		for (int i = 1; i <= 298; i++)
+		{
+			int k = (j - 1) * 298 + i;
+			tecplotfile << cell[k].rho << "\n";
+		}
+	}
+	tecplotfile << "\n";
+	for (int j = 1; j < 180; j++)
+	{
+		for (int i = 1; i <= 298; i++)
+		{
+			int k = (j - 1) * 298 + i;
+			tecplotfile << cell[k].pr << "\n";
+		}
+	}
+	tecplotfile << "\n";
+	for (int j = 1; j < 180; j++)
+	{
+		for (int i = 1; i <= 298; i++)
+		{
+			int k = (j - 1) * 298 + i;
+			tecplotfile << cell[k].u1 << "\n";
+		}
+	}
+	tecplotfile << "\n";
+	for (int j = 1; j < 180; j++)
+	{
+		for (int i = 1; i <= 298; i++)
+		{
+			int k = (j - 1) * 298 + i;
+			tecplotfile << cell[k].u2 << "\n";
+		}
+	}
+	tecplotfile << "\n";
+	for (int j = 1; j < 180; j++)
+	{
+		for (int i = 1; i <= 298; i++)
+		{
+			int k = (j - 1) * 298 + i;
+			tecplotfile << sqrt(pow(cell[k].u1, 2) + pow(cell[k].u2, 2)) << "\n";
+		}
+	}
+	tecplotfile << "\n";
+	tecplotfile.close();
 }
 //Function which prints the final primitive vector into the file "primitive-vector.dat"
 void print_output()

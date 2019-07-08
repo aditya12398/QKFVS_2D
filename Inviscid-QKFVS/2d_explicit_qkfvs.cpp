@@ -51,7 +51,7 @@ int main(int arg, char *argv[])
 	void state_update();
 	void print_output();
 	void write_tecplot();
-	ofstream outfile("residue_explicit");
+	ofstream outfile("residue_explicit_EU");
 
 	double res_old;
 
@@ -437,72 +437,12 @@ void initial_conditions()
 	}
 } //End of the function
 
-double *rungekutta(double *K, int k, double dt)
-{
-	double rho, u1, u2, pr;
-	double U[5], Gp[5], Gn[5], G[5];
-	double *fx = new double[5];
-	for (int i = 1; i <= 4; i++)
-	{
-		fx[i] = 0;
-		U[i] = cell[k].Uold[i] - dt * K[i];
-	}
-	rho = U[1];
-	double temp = 1 / U[1];
-	u1 = U[2] * temp;
-	u2 = U[3] * temp;
-	temp = U[4] - (0.5 / U[1]) * (U[2] * U[2] + U[3] * U[3]);
-	pr = 0.4 * temp;
-
-	for (int r = 1; r <= cell[k].noe; r++)
-	{
-		int e = cell[k].edge[r];
-		double l = edge[e].length;
-		double nx = edge[e].nx;
-		double ny = edge[e].ny;
-		/*if (edge[e].status == 'o')
-		{
-			rho = 1.225;
-			double temp = 1 / G[1];
-			u1 = 0.63;
-			u2 = 0;
-			pr = 101325;
-		}*/
-		if (edge[e].rcell == k)
-		{
-			nx = -nx;
-			ny = -ny;
-		}
-
-		if (edge[e].status == 'w')
-		{
-			KFVS_wall_flux(G, nx, ny, rho, u1, u2, pr);
-		}
-		else if (edge[e].status == 'o')
-		{
-			KFVS_outer_flux(G, nx, ny, rho, u1, u2, pr);
-		}
-		else
-		{
-			KFVS_pos_flux(Gp, nx, ny, rho, u1, u2, pr);
-			KFVS_neg_flux(Gn, nx, ny, rho, u1, u2, pr);
-			G[1] = Gp[1] + Gn[1];
-			G[2] = Gp[2] + Gn[2];
-			G[3] = Gp[3] + Gn[3];
-			G[4] = Gp[4] + Gn[4];
-		}
-		for(int i = 1; i <= 4; i++)
-			fx[i] += l * G[i];
-	}
-	return fx;
-}
 void state_update()
 {
 	void prim_to_conserved(double *, int);
 	void conserved_to_primitive(double *, int);
 	residue = 0.0;
 	max_res = 0.0;
-	double *K1, *K2, *K3, *K4; //Terms for Runge-Kutta order 4 method
 	double U[5];
 
 	for (int k = 1; k <= max_cells; k++)
@@ -512,16 +452,9 @@ void state_update()
 		double temp = U[1];
 		double dt = func_delt(k);
 
-		K1 = cell[k].flux;
-		K2 = rungekutta(K1, k, dt / 2);
-		K3 = rungekutta(K2, k, dt / 2);
-		K4 = rungekutta(K3, k, dt);
-
 		for (int r = 1; r <= 4; r++)
 		{
-			//Backward Euler method to find the updated state
-			cell[k].Unew[r] = cell[k].Uold[r] - dt * (K1[r] + 2 * K2[r] + 2 * K3[r] + K4[r]) /(6 *  cell[k].area);
-			//Runge Kutta order 4 to find the updated state
+			cell[k].Unew[r] = cell[k].Uold[r] - dt * cell[k].flux[r] / cell[k].area;
 			U[r] = cell[k].Unew[r];
 			cell[k].Uold[r] = cell[k].Unew[r];
 		}
@@ -535,9 +468,6 @@ void state_update()
 			max_res_cell = k;
 		}
 		conserved_to_primitive(U, k);
-	delete[] K2;
-	delete[] K3;
-	delete[] K4;
 	}
 	residue = residue / max_cells;
 	residue = sqrt(residue);
@@ -545,70 +475,70 @@ void state_update()
 } //End of the function
 void write_tecplot()
 {
-	string title = "Solution_Tecplot_Explicit_1.dat";
+	string title = "Solution_Tecplot_Explicit_EU.dat";
 	ofstream tecplotfile("./" + title);
 	tecplotfile << "TITLE: \"QKFVS Viscous Code - NAL\"\n";
 	tecplotfile << "VARIABLES= \"X\", \"Y\", \"Density\", \"Pressure\", \"x-velocity\", \"y-velocity\", \"Velocity Magnitude\"\n";
-	tecplotfile << "ZONE I= 160 J= 59 , DATAPACKING=BLOCK\n";
-	for (int j = 1; j < 60; j++)
+	tecplotfile << "ZONE I= 298 J= 179 , DATAPACKING=BLOCK\n";
+	for (int j = 1; j < 180; j++)
 	{
-		for (int i = 1; i <= 160; i++)
+		for (int i = 1; i <= 298; i++)
 		{
-			int k = (j - 1) * 160 + i;
+			int k = (j - 1) * 298 + i;
 			tecplotfile << cell[k].cx << "\n";
 		}
 	}
 	tecplotfile << "\n";
-	for (int j = 1; j < 60; j++)
+	for (int j = 1; j < 180; j++)
 	{
-		for (int i = 1; i <= 160; i++)
+		for (int i = 1; i <= 298; i++)
 		{
-			int k = (j - 1) * 160 + i;
+			int k = (j - 1) * 298 + i;
 			tecplotfile << cell[k].cy << "\n";
 		}
 	}
 	tecplotfile << "\n";
-	for (int j = 1; j < 60; j++)
+	for (int j = 1; j < 180; j++)
 	{
-		for (int i = 1; i <= 160; i++)
+		for (int i = 1; i <= 298; i++)
 		{
-			int k = (j - 1) * 160 + i;
+			int k = (j - 1) * 298 + i;
 			tecplotfile << cell[k].rho << "\n";
 		}
 	}
 	tecplotfile << "\n";
-	for (int j = 1; j < 60; j++)
+	for (int j = 1; j < 180; j++)
 	{
-		for (int i = 1; i <= 160; i++)
+		for (int i = 1; i <= 298; i++)
 		{
-			int k = (j - 1) * 160 + i;
+			int k = (j - 1) * 298 + i;
 			tecplotfile << cell[k].pr << "\n";
 		}
 	}
 	tecplotfile << "\n";
-	for (int j = 1; j < 60; j++)
+	for (int j = 1; j < 180; j++)
 	{
-		for (int i = 1; i <= 160; i++)
+		for (int i = 1; i <= 298; i++)
 		{
-			int k = (j - 1) * 160 + i;
+			int k = (j - 1) * 298 + i;
 			tecplotfile << cell[k].u1 << "\n";
 		}
 	}
 	tecplotfile << "\n";
-	for (int j = 1; j < 60; j++)
+	for (int j = 1; j < 180; j++)
 	{
-		for (int i = 1; i <= 160; i++)
+		for (int i = 1; i <= 298; i++)
 		{
-			int k = (j - 1) * 160 + i;
+			int k = (j - 1) * 298 + i;
 			tecplotfile << cell[k].u2 << "\n";
 		}
 	}
 	tecplotfile << "\n";
-	for (int j = 1; j < 60; j++)
+	for (int j = 1; j < 180; j++)
 	{
-		for (int i = 1; i <= 160; i++)
+		for (int i = 1; i <= 298; i++)
 		{
-			int k = (j - 1) * 160 + i;
+			int k = (j - 1) * 298 + i;
 			tecplotfile << sqrt(pow(cell[k].u1, 2) + pow(cell[k].u2, 2)) << "\n";
 		}
 	}
@@ -618,7 +548,7 @@ void write_tecplot()
 //Function which prints the final primitive vector into the file "primitive-vector.dat"
 void print_output()
 {
-	ofstream outfile("primitive-vector_explicit_1.dat");
+	ofstream outfile("primitive-vector_explicit_EU.dat");
 	for (int k = 1; k <= max_cells; k++)
 		outfile << k << "\t" << cell[k].rho << "\t" << cell[k].u1 << "\t" << cell[k].u2 << "\t" << cell[k].pr << endl;
 } //End of the function

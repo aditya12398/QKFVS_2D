@@ -26,7 +26,10 @@ struct Cell *cell;
 struct Edge * edge;
 int inputdata(string fname)
 {
+    int temp;
+    double rho, u1, u2, pr;
     ifstream infile(fname);
+    ifstream infile2("primitive-vector_implicit.dat");
     //Input Cell data
     if (!infile)
         return 1;
@@ -43,6 +46,7 @@ int inputdata(string fname)
     for (int k = 1; k <= max_cells; k++)
     {
         infile >> cell[k].cx >> cell[k].cy >> cell[k].rho >> cell[k].u1 >> cell[k].u2 >> cell[k].pr >> cell[k].area >> cell[k].noe;
+        infile2 >> temp >> cell[k].rho >> cell[k].u1 >> cell[k].u2 >> cell[k].pr;
         //Set enclosing edges
         cell[k].edge = new int[cell[k].noe + 1];
         for (int r = 1; r <= cell[k].noe; r++)
@@ -100,7 +104,7 @@ int main()
         exit(1);
     }
     error = 0;
-    error = fixdata("ogrid_viscous_dim_1");
+    error = fixdata("ogrid_viscous_dim_2");
     if (error)
     {
         cout << "Error in writing file, please check the file or file title\nExiting...";
