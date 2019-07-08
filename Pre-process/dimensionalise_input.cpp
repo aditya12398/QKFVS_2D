@@ -93,14 +93,14 @@ int fixdata(string fname)
 int main()
 {
     int error = 0;
-    error = inputdata("ogrid_viscous");
+    error = inputdata("2order-input-data");
     if (error)
     {
         cout << "Error in reading file, please check the file or file title\nExiting...";
         exit(1);
     }
     error = 0;
-    error = fixdata("ogrid_viscous_dim");
+    error = fixdata("ogrid_viscous_dim_1");
     if (error)
     {
         cout << "Error in writing file, please check the file or file title\nExiting...";

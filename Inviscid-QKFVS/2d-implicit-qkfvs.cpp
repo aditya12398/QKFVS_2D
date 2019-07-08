@@ -12,28 +12,28 @@ Strongly Recommended: Use Visual Studio Code(text editor) while understanding th
 int max_edges, max_cells, max_iters;
 double Mach, aoa, cfl, limiter_const;
 double residue, max_res; //RMS Residue and maximum residue in the fluid domain
-int max_res_cell; //Cell number with maximum residue
+int max_res_cell;		 //Cell number with maximum residue
 double pi = 4.0 * atan(1.0);
 
 //Structure to store edge data
 struct Edge
 {
-	int lcell, rcell; //Holds cell numbers on either side of the edge. Prefix l stands for left and r for right.
+	int lcell, rcell;	  //Holds cell numbers on either side of the edge. Prefix l stands for left and r for right.
 	double nx, ny, mx, my; //Hold point data. Prefix m stands for midpoint and n for edge normal.
-	double length; //Holds edge length data
-	char status; //Specifies whether the edge is Internal(f), Wall(w) or Outer Boundary(o).
+	double length;		   //Holds edge length data
+	char status;		   //Specifies whether the edge is Internal(f), Wall(w) or Outer Boundary(o).
 };
 //Structure to store cell data
 struct Cell
 {
-	int *edge, noe, nbhs, *conn; //Holds enclosing edges and neighbour cell data.
-	double area, cx, cy; //Area of the cell and cell centre coordinates
-	double rho, u1, u2, pr; //Values of density, x - velocity, y - velocity and pressure of the cell
-	double flux[5]; //Kinetic Fluxes. Reference: See function `void KFVS_pos_flux(...)`
-	double Upold[5], Upnew[5]; //Corresponds to void forward_sweep()
-	double Unew[5], Uold[5]; //Corresponds to void backward_sweep()
+	int *edge, noe, nbhs, *conn;  //Holds enclosing edges and neighbour cell data.
+	double area, cx, cy;		  //Area of the cell and cell centre coordinates
+	double rho, u1, u2, pr;		  //Values of density, x - velocity, y - velocity and pressure of the cell
+	double flux[5];				  //Kinetic Fluxes. Reference: See function `void KFVS_pos_flux(...)`
+	double Upold[5], Upnew[5];	//Corresponds to void forward_sweep()
+	double Unew[5], Uold[5];	  //Corresponds to void backward_sweep()
 	int alias, cell_with_alias_k; //Aliasing of cells for implicitisation
-	double q[5], qx[5], qy[5]; //Entropy Variables. Reference: See Boltzmann Equations
+	double q[5], qx[5], qy[5];	//Entropy Variables. Reference: See Boltzmann Equations
 };
 
 struct Edge *edge;
@@ -74,8 +74,9 @@ int main(int arg, char *argv[])
 
 		if (t == 1)
 			res_old = residue;
-		//residue = log10(residue / res_old);
-		if (log10(residue) < -6) {
+		residue = log10(residue / res_old);
+		if ((residue) < -12)
+		{
 			std::cout << "Convergence criteria reached.\n";
 			break;
 		}
@@ -442,14 +443,66 @@ void initial_conditions()
 	}
 } //End of the function
 
+double *rungekutta(double *K, int k, double dt)
+{
+	double rho, u1, u2, pr;
+	double G[5] = {0, 0, 0, 0, 0};
+	double *fx = new double[5];
+	for (int i = 1; i <= 4; i++)
+	{
+		fx[i] = 0;
+		G[i] = cell[k].Uold[i] - dt * K[i];
+	}
+	rho = G[1];
+	double temp = 1 / G[1];
+	u1 = G[2] * temp;
+	u2 = G[3] * temp;
+	temp = G[4] - (0.5 / G[1]) * (G[2] * G[2] + G[3] * G[3]);
+	pr = 0.4 * temp;
+
+	for (int r = 1; r <= cell[k].noe; r++)
+	{
+		int e = cell[k].edge[r];
+		double l = edge[e].length;
+		double nx = edge[e].nx;
+		double ny = edge[e].ny;
+		if (edge[e].status == 'o')
+		{
+			rho = 1.225;
+			double temp = 1 / G[1];
+			u1 = 0.63;
+			u2 = 0;
+			pr = 101325;
+		}
+		if (edge[e].rcell == k)
+		{
+			nx = -nx;
+			ny = -ny;
+		}
+		if (edge[e].status == 'w')
+		{
+			fx[1] += 0;
+			fx[2] += ((pr + rho * u1 * u1) * nx + rho * u1 * u2 * ny) * l;
+			fx[3] += ((pr + rho * u2 * u2) * ny + rho * u1 * u2 * nx) * l;
+			fx[4] += 0;
+		}
+		else
+		{
+			fx[1] += (rho * u1 * nx + rho * u2 * ny) * l;
+			fx[2] += ((pr + rho * u1 * u1) * nx + rho * u1 * u2 * ny) * l;
+			fx[3] += ((pr + rho * u2 * u2) * ny + rho * u1 * u2 * nx) * l;
+			fx[4] += (3.5 * pr + 0.5 * rho * (u1 * u1 + u2 * u2)) * (u1 * nx + u2 * ny) * l;
+		}
+	}
+	return fx;
+}
 void state_update()
 {
 	void prim_to_conserved(double *, int);
 	void conserved_to_primitive(double *, int);
 	residue = 0.0;
-	double delt, area;
 	max_res = 0.0;
-
+	double *K1, *K2, *K3, *K4; //Terms for Runge-Kutta order 4 method
 	double U[5];
 
 	for (int k = 1; k <= max_cells; k++)
@@ -457,11 +510,19 @@ void state_update()
 		prim_to_conserved(U, k);
 
 		double temp = U[1];
+		double dt = func_delt(k);
+
+		K1 = cell[k].flux;
+		K2 = rungekutta(K1, k, dt / 2);
+		K3 = rungekutta(K2, k, dt / 2);
+		K4 = rungekutta(K3, k, dt);
 
 		for (int r = 1; r <= 4; r++)
 		{
+			//Backward Euler method to find the updated state
+			cell[k].Unew[r] = cell[k].Uold[r] - dt * (K1[r] + 2 * K2[r] + 2 * K3[r] + K4[r]) / (6 * cell[k].area);
+			//Runge Kutta order 4 to find the updated state
 			U[r] = cell[k].Unew[r];
-			cell[k].Upold[r] = cell[k].Upnew[r];
 			cell[k].Uold[r] = cell[k].Unew[r];
 		}
 
@@ -474,9 +535,13 @@ void state_update()
 			max_res_cell = k;
 		}
 		conserved_to_primitive(U, k);
+		delete[] K2;
+		delete[] K3;
+		delete[] K4;
 	}
 	residue = residue / max_cells;
 	residue = sqrt(residue);
+
 } //End of the function
 
 //Function which prints the final primitive vector into the file "primitive-vector.dat"
@@ -995,7 +1060,7 @@ void flux_G(double *G, double nx, double ny, double rho, double ut, double un, d
 	temp2 = rho * ut * un;
 
 	*(G + 2) = -ty * temp1 + ny * temp2; //Momentum Flux across the edge along x direction
-	*(G + 3) = tx * temp1 - nx * temp2; //Momentum Flux across the edge along y direction
+	*(G + 3) = tx * temp1 - nx * temp2;  //Momentum Flux across the edge along y direction
 
 	temp1 = 0.5 * (un * un + ut * ut);
 
