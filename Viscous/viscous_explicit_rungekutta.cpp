@@ -52,7 +52,7 @@ int main(int arg, char *argv[])
     void state_update();
     void print_output();
 
-    ofstream outfile("./Output/Residue");
+    ofstream outfile("./Output/residue_viscous_rk4");
 
     double res_old;
 
@@ -94,8 +94,8 @@ Flow Parameters: fp_viscous
 */
 void input_data()
 {
-    ifstream infile("ogrid_viscous_dim");
-    ifstream infile2("fp_viscous");
+    ifstream infile("naca0012_viscous_ogrid");
+    ifstream infile2("viscous_flow_parameters");
     //Input Flow Parameters
     infile2 >> Mach >> aoa >> cfl >> max_iters >> limiter_const;
     //Input Edge data
@@ -571,6 +571,33 @@ void conserved_to_primitive(double *U, int k)
     cell[k].tp = cell[k].pr / (R * cell[k].rho);
 } //End of the function
 
+double cfl_cutback(double dt, int k)
+{
+    double del_U[5];
+    double epsilon_p, epsilon_rho, epsilon;
+    double cfl_tilde;
+    double u1, u2;
+    u1 = cell[k].u1;
+    u2 = cell[k].u2;
+    for(int i = 1; i <= 4; i++)
+    {
+        del_U[i] = -dt * cell[k].flux[i] / cell[k].area;
+    }
+    epsilon_rho = del_U[1] / cell[k].rho;
+    epsilon_p = 0.4 * (del_U[4] - (u1 * del_U[2] + u2 * del_U[3]) + del_U[1] * (u1 * u1 + u2 * u2) * 0.5) / cell[k].pr;
+
+    if (epsilon_p > epsilon_rho)
+        epsilon = epsilon_p;
+    else
+        epsilon = epsilon_rho;
+    
+    cfl_tilde = 0.1 / epsilon;
+    if (cfl_tilde < cfl)
+        return cfl_tilde;
+    else
+        return cfl;
+}
+
 //Function to find the delt (delta t) for each cell
 double func_delt(int k)
 {
@@ -613,7 +640,8 @@ double func_delt(int k)
     delt_inv = 2.0 * area / delt_inv;
     delt_visc = rho * Prandtl_number * smin * smin / (4 * mu * gma);
     double delt = 1 / ((1 / delt_inv) + (1 / delt_visc));
-    return (cfl * delt);
+    double cfl_cut = cfl_cutback(delt, k);
+    return (cfl_cut * delt);
 } //End of the function
 
 //Function to give the initial conditions
@@ -796,7 +824,7 @@ void state_update()
 void write_tecplot()
 {
     static int count = 1;
-    string title = to_string(count++) + "_Solution_Tecplot_Explicit.dat";
+    string title = to_string(count++) + "_flow_viscous_rk4.dat";
     ofstream tecplotfile("./Output/" + title);
     tecplotfile << "TITLE: \"QKFVS Viscous Code - NAL\"\n";
     tecplotfile << "VARIABLES= \"X\", \"Y\", \"Density\", \"Pressure\", \"x-velocity\", \"y-velocity\", \"Velocity Magnitude\", \"Temperature\"\n";
@@ -879,7 +907,7 @@ void write_tecplot()
 //Function which prints the final primitive vector into the file "primitive-vector.dat"
 void print_output()
 {
-    ofstream outfile("./Output/Primitive-Vector.dat");
+    ofstream outfile("./Output/primitive_vector_viscous_rk4.dat");
 
     for (int k = 1; k <= max_cells; k++)
     {
