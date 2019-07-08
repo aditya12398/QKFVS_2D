@@ -251,6 +251,8 @@ void construct_equation(int k, char var, double matrix[5][6], double f)
 
 void f_derivatives()
 {
+    static int count = 1;
+    string title = "./Output/" + to_string(count) + "_derivatives.dat";
     for (int k = 1; k <= max_cells; k++)
     {
         double matrix[5][6], *solution;
