@@ -10,7 +10,7 @@ Strongly Recommended: Use Visual Studio Code(text editor) while understanding th
 using namespace std;
 
 int max_edges, max_cells, max_iters;
-double Mach, aoa, cfl, limiter_const;
+double Mach, aoa, cfl_max, limiter_const;
 double gma = 1.4, R = 287, Prandtl_number = 0.72; //Flow and material parameters
 double residue, max_res;                          //RMS Residue and maximum residue in the fluid domain
 int max_res_cell;                                 //Cell number with maximum residue
@@ -97,7 +97,7 @@ void input_data()
     ifstream infile("naca0012_viscous_ogrid");
     ifstream infile2("viscous_flow_parameters");
     //Input Flow Parameters
-    infile2 >> Mach >> aoa >> cfl >> max_iters >> limiter_const;
+    infile2 >> Mach >> aoa >> cfl_max >> max_iters >> limiter_const;
     //Input Edge data
     infile >> max_edges;
     edge = new Edge[max_edges + 1];
@@ -571,31 +571,43 @@ void conserved_to_primitive(double *U, int k)
     cell[k].tp = cell[k].pr / (R * cell[k].rho);
 } //End of the function
 
-double cfl_cutback(double dt, int k)
+double cfl_cutback()
 {
+    double func_delt(int);
     double del_U[5];
-    double epsilon_p, epsilon_rho, epsilon;
-    double cfl_tilde;
-    double u1, u2;
-    u1 = cell[k].u1;
-    u2 = cell[k].u2;
-    for(int i = 1; i <= 4; i++)
+    double epsilon_p, epsilon_rho, epsilon = 0;
+    double cfl_tilde, cfl_min;
+    double rho, u1, u2, pr, area, dt;
+    cfl_min = cfl_max;
+    for (int k = 1; k <= max_cells; k++)
     {
-        del_U[i] = -dt * cell[k].flux[i] / cell[k].area;
-    }
-    epsilon_rho = del_U[1] / cell[k].rho;
-    epsilon_p = 0.4 * (del_U[4] - (u1 * del_U[2] + u2 * del_U[3]) + del_U[1] * (u1 * u1 + u2 * u2) * 0.5) / cell[k].pr;
+        dt = func_delt(k);
+        rho = cell[k].rho;
+        u1 = cell[k].u1;
+        u2 = cell[k].u2;
+        pr = cell[k].pr;
+        area = cell[k].pr;
+        for (int i = 1; i <= 4; i++)
+        {
+            del_U[i] = -dt * cell[k].flux[i] / area;
+        }
+        epsilon_rho = fabs(del_U[1] / rho);
+        epsilon_p = fabs((gma - 1) * (del_U[4] - (u1 * del_U[2] + u2 * del_U[3]) + del_U[1] * (u1 * u1 + u2 * u2) * 0.5) / pr);
 
-    if (epsilon_p > epsilon_rho)
-        epsilon = epsilon_p;
-    else
-        epsilon = epsilon_rho;
-    
-    cfl_tilde = 0.1 / epsilon;
-    if (cfl_tilde < cfl)
-        return cfl_tilde;
-    else
-        return cfl;
+        if (epsilon_p > epsilon || epsilon_rho > epsilon)
+        {
+            if (epsilon_p > epsilon_rho)
+                epsilon = epsilon_p;
+            else
+                epsilon = epsilon_rho;
+        }
+
+        cfl_tilde = 0.1 / epsilon;
+        if (cfl_tilde < cfl_min)
+            cfl_min = cfl_tilde;
+    }
+    cout << epsilon << "\t" << cfl_min << "\t";
+    return cfl_min;
 }
 
 //Function to find the delt (delta t) for each cell
@@ -640,8 +652,7 @@ double func_delt(int k)
     delt_inv = 2.0 * area / delt_inv;
     delt_visc = rho * Prandtl_number * smin * smin / (4 * mu * gma);
     double delt = 1 / ((1 / delt_inv) + (1 / delt_visc));
-    double cfl_cut = cfl_cutback(delt, k);
-    return (cfl_cut * delt);
+    return (delt);
 } //End of the function
 
 //Function to give the initial conditions
@@ -780,14 +791,14 @@ void state_update()
     max_res = 0.0;
     double *K1, *K2, *K3, *K4; //Terms for Runge-Kutta order 4 method
     double U[5];
-
+    double cfl_cut = cfl_cutback();
     for (int k = 1; k <= max_cells; k++)
     {
         prim_to_conserved(U, k);
 
         double temp = U[1];
-        double dt = func_delt(k);
-
+        double dt = cfl_cut * func_delt(k);
+        //Uncomment the following lines, the last 3 and RK line in the loop to use RK4
         //K1 = cell[k].flux;
         //K2 = rungekutta(K1, k, dt / 2);
         //K3 = rungekutta(K2, k, dt / 2);
