@@ -59,7 +59,7 @@ int main(int arg, char *argv[])
     double res_old;
 
     input_data();
-    int T = 2;
+    int T = 250;
     for (int t = 1; t <= max_iters; t++)
     {
         initial_conditions();
@@ -82,7 +82,7 @@ int main(int arg, char *argv[])
 
         if (t == T)
         {
-            T = T + 2;
+            T = T + 250;
             print_output();
         }
     }
@@ -96,7 +96,7 @@ Flow Parameters: fp_viscous
 */
 void input_data()
 {
-    ifstream infile("naca0012_viscous_ogrid");
+    ifstream infile("naca0012_viscous_ogrid_4");
     ifstream infile2("viscous_flow_parameters");
     //Input Flow Parameters
     infile2 >> Mach >> aoa >> cfl_max >> max_iters >> limiter_const;

@@ -3,8 +3,8 @@
 #include <cmath>
 using namespace std;
 
-int imax = 269;
-int jmax = 100;
+int imax = 298;
+int jmax = 180;
 int max_points;
 int max_cells;
 int max_edges;
@@ -14,7 +14,6 @@ double alpha = 0.0;
 
 struct Point
 {
-
 	double x, y;
 	int noc, c[15];
 };
@@ -196,39 +195,84 @@ void cell_data()
 		{
 			if (i == 1)
 			{
-				//cell[k].conn[nbhs++] = get_cell(imax, j);
 				cell[k].conn[nbhs++] = get_cell(i + 1, j);
-				//cell[k].conn[nbhs++] = get_cell(imax, j + 1);
-				cell[k].conn[nbhs++] = get_cell(i, j + 1);
 				cell[k].conn[nbhs++] = get_cell(i + 1, j + 1);
+				cell[k].conn[nbhs++] = get_cell(i + 1, j + 2);
+				cell[k].conn[nbhs++] = get_cell(i, j + 1);
+				cell[k].conn[nbhs++] = get_cell(i, j + 2);
+				cell[k].conn[nbhs++] = get_cell(i + 2, j);
+				cell[k].conn[nbhs++] = get_cell(i + 2, j + 1);
+				cell[k].conn[nbhs++] = get_cell(i + 2, j + 2);
 			}
 			else if (i > 1 && i < imax)
 			{
 				cell[k].conn[nbhs++] = get_cell(i - 1, j);
-				cell[k].conn[nbhs++] = get_cell(i + 1, j);
 				cell[k].conn[nbhs++] = get_cell(i - 1, j + 1);
+				cell[k].conn[nbhs++] = get_cell(i - 1, j + 2);
 				cell[k].conn[nbhs++] = get_cell(i, j + 1);
+				cell[k].conn[nbhs++] = get_cell(i, j + 2);
+				cell[k].conn[nbhs++] = get_cell(i + 1, j);
 				cell[k].conn[nbhs++] = get_cell(i + 1, j + 1);
+				cell[k].conn[nbhs++] = get_cell(i + 1, j + 2);
 			}
 			if (i == imax)
 			{
 				cell[k].conn[nbhs++] = get_cell(i - 1, j);
-				//cell[k].conn[nbhs++] = get_cell(1, j);
 				cell[k].conn[nbhs++] = get_cell(i - 1, j + 1);
+				cell[k].conn[nbhs++] = get_cell(i - 1, j + 2);
 				cell[k].conn[nbhs++] = get_cell(i, j + 1);
-				//cell[k].conn[nbhs++] = get_cell(1, j + 1);
+				cell[k].conn[nbhs++] = get_cell(i, j + 2);
+				cell[k].conn[nbhs++] = get_cell(i - 2, j);
+				cell[k].conn[nbhs++] = get_cell(i - 2, j + 1);
+				cell[k].conn[nbhs++] = get_cell(i - 2, j + 2);
 			}
 		}
-		else if (j > 1 && j < jmax - 1)
+		else if (j == 2)
 		{
 			if (i == 1)
 			{
-				//cell[k].conn[nbhs++] = get_cell(imax, j - 1);
+				cell[k].conn[nbhs++] = get_cell(i + 1, j);
+				cell[k].conn[nbhs++] = get_cell(i + 1, j + 1);
+				cell[k].conn[nbhs++] = get_cell(i + 1, j + 2);
+				cell[k].conn[nbhs++] = get_cell(i, j + 1);
+				cell[k].conn[nbhs++] = get_cell(i, j + 2);
+				cell[k].conn[nbhs++] = get_cell(imax, j);
+				cell[k].conn[nbhs++] = get_cell(imax, j + 1);
+				cell[k].conn[nbhs++] = get_cell(imax, j + 2);
+			}
+			else if (i > 1 && i < imax)
+			{
+				cell[k].conn[nbhs++] = get_cell(i - 1, j);
+				cell[k].conn[nbhs++] = get_cell(i - 1, j + 1);
+				cell[k].conn[nbhs++] = get_cell(i - 1, j + 2);
+				cell[k].conn[nbhs++] = get_cell(i, j + 1);
+				cell[k].conn[nbhs++] = get_cell(i, j + 2);
+				cell[k].conn[nbhs++] = get_cell(i + 1, j);
+				cell[k].conn[nbhs++] = get_cell(i + 1, j + 1);
+				cell[k].conn[nbhs++] = get_cell(i + 1, j + 2);
+			}
+			if (i == imax)
+			{
+				cell[k].conn[nbhs++] = get_cell(i - 1, j);
+				cell[k].conn[nbhs++] = get_cell(i - 1, j + 1);
+				cell[k].conn[nbhs++] = get_cell(i - 1, j + 2);
+				cell[k].conn[nbhs++] = get_cell(i, j + 1);
+				cell[k].conn[nbhs++] = get_cell(i, j + 2);
+				cell[k].conn[nbhs++] = get_cell(1, j);
+				cell[k].conn[nbhs++] = get_cell(1, j + 1);
+				cell[k].conn[nbhs++] = get_cell(1, j + 2);
+			}
+		}
+		else if (j > 2 && j < jmax - 1)
+		{
+			if (i == 1)
+			{
+				cell[k].conn[nbhs++] = get_cell(imax, j - 1);
 				cell[k].conn[nbhs++] = get_cell(i, j - 1);
 				cell[k].conn[nbhs++] = get_cell(i + 1, j - 1);
-				//cell[k].conn[nbhs++] = get_cell(imax, j);
+				cell[k].conn[nbhs++] = get_cell(imax, j);
 				cell[k].conn[nbhs++] = get_cell(i + 1, j);
-				//cell[k].conn[nbhs++] = get_cell(imax, j + 1);
+				cell[k].conn[nbhs++] = get_cell(imax, j + 1);
 				cell[k].conn[nbhs++] = get_cell(i, j + 1);
 				cell[k].conn[nbhs++] = get_cell(i + 1, j + 1);
 			}
@@ -247,22 +291,22 @@ void cell_data()
 			{
 				cell[k].conn[nbhs++] = get_cell(i - 1, j - 1);
 				cell[k].conn[nbhs++] = get_cell(i, j - 1);
-				//cell[k].conn[nbhs++] = get_cell(1, j - 1);
+				cell[k].conn[nbhs++] = get_cell(1, j - 1);
 				cell[k].conn[nbhs++] = get_cell(i - 1, j);
-				//cell[k].conn[nbhs++] = get_cell(1, j);
+				cell[k].conn[nbhs++] = get_cell(1, j);
 				cell[k].conn[nbhs++] = get_cell(i - 1, j + 1);
 				cell[k].conn[nbhs++] = get_cell(i, j + 1);
-				//cell[k].conn[nbhs++] = get_cell(1, j + 1);
+				cell[k].conn[nbhs++] = get_cell(1, j + 1);
 			}
 		}
 		else if (j == jmax - 1)
 		{
 			if (i == 1)
 			{
-				//cell[k].conn[nbhs++] = get_cell(imax, j - 1);
+				cell[k].conn[nbhs++] = get_cell(imax, j - 1);
 				cell[k].conn[nbhs++] = get_cell(i, j - 1);
 				cell[k].conn[nbhs++] = get_cell(i + 1, j - 1);
-				//cell[k].conn[nbhs++] = get_cell(imax, j);
+				cell[k].conn[nbhs++] = get_cell(imax, j);
 				cell[k].conn[nbhs++] = get_cell(i + 1, j);
 			}
 			if (i > 1 && i < imax)
@@ -277,8 +321,8 @@ void cell_data()
 			{
 				cell[k].conn[nbhs++] = get_cell(i, j - 1);
 				cell[k].conn[nbhs++] = get_cell(i - 1, j - 1);
-				//cell[k].conn[nbhs++] = get_cell(1, j - 1);
-				//cell[k].conn[nbhs++] = get_cell(1, j);
+				cell[k].conn[nbhs++] = get_cell(1, j - 1);
+				cell[k].conn[nbhs++] = get_cell(1, j);
 				cell[k].conn[nbhs++] = get_cell(i - 1, j);
 			}
 		}
@@ -451,14 +495,14 @@ void length(int N)
 
 void print()
 {
-	ofstream outfile("print");
+	ofstream outfile("./Output/print");
 	for (int k = 1; k <= max_edges; k++)
 		outfile << edge[k].v1 << "\t" << edge[k].v2 << "\t" << edge[k].lcell << "\t" << edge[k].rcell << endl;
 } //End of the function
 
 void output1()
 {
-	ofstream outfile("1order-input-data");
+	ofstream outfile("./Output/1order-input-data");
 	outfile << max_edges << endl;
 	for (int k = 1; k <= max_edges; k++)
 		outfile << edge[k].lcell << "\t" << edge[k].rcell << "\t" << edge[k].status << "\t" << edge[k].nx << "\t" << edge[k].ny << "\t" << edge[k].length << endl;
@@ -476,7 +520,7 @@ void output1()
 
 void output2()
 {
-	ofstream outfile("2order-input-data");
+	ofstream outfile("./Output/2order-input-data");
 	outfile << max_edges << endl;
 	for (int k = 1; k <= max_edges; k++)
 		outfile << edge[k].mx << "\t" << edge[k].my << "\t" << edge[k].lcell << "\t" << edge[k].rcell << "\t" << edge[k].status << "\t" << edge[k].nx << "\t" << edge[k].ny << "\t" << edge[k].length << endl;
@@ -499,7 +543,7 @@ void output2()
 //input file for vigie plot
 void vigie_plot()
 {
-	ofstream outfile("vigie-file");
+	ofstream outfile("./Output/vigie-file");
 	outfile << max_points << endl;
 	outfile << endl;
 	for (int k = 1; k <= max_points; k++)
@@ -514,7 +558,7 @@ void vigie_plot()
 // printing the point-data information
 void point_data_print()
 {
-	ofstream outfile("point-data");
+	ofstream outfile("./Output/point-data");
 	for (int k = 1; k <= max_points; k++)
 	{
 		outfile << k << "\t" << point[k].noc;
