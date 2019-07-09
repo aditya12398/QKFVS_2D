@@ -31,7 +31,9 @@ struct Cell
     double area, cx, cy;         //Area of the cell and cell centre coordinates
     double rho, u1, u2, pr, tp;  //Values of density, x - velocity, y - velocity, pressure and temperature of the cell
     double u1x, u2x, u1y, u2y;   //Velocity derivatives
+    double u1xx, u1xy, u1yy, u2xx, u2xy, u2yy; //Double derivatives of velocities
     double tpx, tpy;             //Temperature derivatives
+    double tpxx, tpxy, tpyy;    //Double derivatives
     double flux[5];              //Kinetic Fluxes. Reference: See function `void KFVS_pos_flux(...)`
     double Unew[5], Uold[5];     //Corresponds to void backward_sweep()
     double q[5], qx[5], qy[5];   //Entropy Variables. Reference: See Boltzmann Equations
@@ -261,16 +263,25 @@ void f_derivatives()
         solution = gauss_elimination(matrix);
         cell[k].u1x = solution[0];
         cell[k].u1y = solution[1];
+        cell[k].u1xx = solution[2];
+        cell[k].u1yy = solution[3];
+        cell[k].u1xy = solution[4];
         delete[] solution;
         construct_equation(k, 'v', matrix, cell[k].u2);
         solution = gauss_elimination(matrix);
         cell[k].u2x = solution[0];
         cell[k].u2y = solution[1];
+        cell[k].u2xx = solution[2];
+        cell[k].u2yy = solution[3];
+        cell[k].u2xy = solution[4];
         delete[] solution;
         construct_equation(k, 't', matrix, cell[k].tp);
         solution = gauss_elimination(matrix);
         cell[k].tpx = solution[0];
         cell[k].tpy = solution[1];
+        cell[k].tpxx = solution[2];
+        cell[k].tpyy = solution[3];
+        cell[k].tpxy = solution[4];
         delete[] solution;
     }
 }
@@ -284,25 +295,39 @@ void viscous_flux(double *G, int e, double nx, double ny, int CELL, double rho_r
     kappa = mu * (gma * R) / (Prandtl_number * (gma - 1));
     if (edge[e].status == 'w' || edge[e].status == 'o')
     {
-        u_dash[1] = (cell[CELL].u1x);
-        u_dash[2] = (cell[CELL].u1y);
-        u_dash[3] = (cell[CELL].u2x);
-        u_dash[4] = (cell[CELL].u2y);
+        double dx = (edge[e].mx - cell[CELL].cx);
+        double dy = (edge[e].my - cell[CELL].cy);
+        u_dash[1] = (cell[CELL].u1x + dx * cell[CELL].u1xx + dy * cell[CELL].u1xy);
+        u_dash[2] = (cell[CELL].u1y + dx * cell[CELL].u1xy + dy * cell[CELL].u1yy);
+        u_dash[3] = (cell[CELL].u2x + dx * cell[CELL].u2xx + dy * cell[CELL].u2xy);
+        u_dash[4] = (cell[CELL].u2y + dx * cell[CELL].u2xy + dy * cell[CELL].u2yy);
 
-        tp_dash[1] = cell[CELL].tpx;
-        tp_dash[2] = cell[CELL].tpy;
+        tp_dash[1] = cell[CELL].tpx + dx * cell[CELL].tpxx + dy * cell[CELL].tpxy;
+        tp_dash[2] = cell[CELL].tpy + dx * cell[CELL].tpxy + dy * cell[CELL].tpyy;
     }
     else
     {
         int lcell = edge[e].lcell;
         int rcell = edge[e].rcell;
-        u_dash[1] = (cell[lcell].u1x * cell[lcell].area + cell[rcell].u1x * cell[rcell].area) / (cell[lcell].area + cell[rcell].area);
+        double dxl = (edge[e].mx - cell[lcell].cx);
+        double dxr = (edge[e].mx - cell[rcell].cx);
+        double dyl = (edge[e].my - cell[lcell].cy);
+        double dyr = (edge[e].my - cell[rcell].cy);
+        /*u_dash[1] = (cell[lcell].u1x * cell[lcell].area + cell[rcell].u1x * cell[rcell].area) / (cell[lcell].area + cell[rcell].area);
         u_dash[2] = (cell[lcell].u1y * cell[lcell].area + cell[rcell].u1y * cell[rcell].area) / (cell[lcell].area + cell[rcell].area);
         u_dash[3] = (cell[lcell].u2x * cell[lcell].area + cell[rcell].u2x * cell[rcell].area) / (cell[lcell].area + cell[rcell].area);
         u_dash[4] = (cell[lcell].u2y * cell[lcell].area + cell[rcell].u2y * cell[rcell].area) / (cell[lcell].area + cell[rcell].area);
 
         tp_dash[1] = (cell[lcell].tpx * cell[lcell].area + cell[rcell].tpx * cell[rcell].area) / (cell[lcell].area + cell[rcell].area);
-        tp_dash[2] = (cell[lcell].tpy * cell[lcell].area + cell[rcell].tpy * cell[rcell].area) / (cell[lcell].area + cell[rcell].area);
+        tp_dash[2] = (cell[lcell].tpy * cell[lcell].area + cell[rcell].tpy * cell[rcell].area) / (cell[lcell].area + cell[rcell].area);*/
+
+        u_dash[1] = ((cell[lcell].u1x + dxl * cell[lcell].u1xx + dyl * cell[lcell].u1xy) + (cell[rcell].u1x + dxr * cell[rcell].u1xx + dyr * cell[rcell].u1xy)) / 2;
+        u_dash[2] = ((cell[lcell].u1y + dxl * cell[lcell].u1xy + dyl * cell[lcell].u1yy) + (cell[rcell].u1y + dxr * cell[rcell].u1xy + dyr * cell[rcell].u1yy)) / 2;
+        u_dash[3] = ((cell[lcell].u2x + dxl * cell[lcell].u2xx + dyl * cell[lcell].u2xy) + (cell[rcell].u2x + dxr * cell[rcell].u2xx + dyr * cell[rcell].u2xy)) / 2;
+        u_dash[4] = ((cell[lcell].u2y + dxl * cell[lcell].u2xy + dyl * cell[lcell].u2yy) + (cell[rcell].u2y + dxr * cell[rcell].u2xy + dyr * cell[rcell].u2yy)) / 2;
+
+        tp_dash[1] = ((cell[lcell].tpx + dxl * cell[lcell].tpxx + dyl * cell[lcell].tpxy) + (cell[rcell].tpx + dxr * cell[rcell].tpxx + dyr * cell[rcell].tpxy)) / 2;
+        tp_dash[2] = ((cell[lcell].tpy + dxl * cell[lcell].tpxy + dyl * cell[lcell].tpyy) + (cell[rcell].tpy + dxr * cell[rcell].tpxy + dyr * cell[rcell].tpyy)) / 2;
     }
     tauxx = mu * (4 / 3 * u_dash[1] - 2 / 3 * u_dash[4]);
     tauyy = mu * (4 / 3 * u_dash[4] - 2 / 3 * u_dash[1]);
@@ -367,8 +392,8 @@ void evaluate_flux()
 
             KFVS_pos_flux(Gp, nx, ny, rhol, u1l, u2l, prl);
             KFVS_neg_flux(Gn, nx, ny, rhor, u1r, u2r, prr);
-            viscous_flux(Gd, k, nx, ny, lcell, cell[lcell].rho, cell[lcell].u1, cell[lcell].u2, cell[lcell].pr);
-            viscous_flux(Gd, k, nx, ny, rcell, cell[rcell].rho, cell[rcell].u1, cell[rcell].u2, cell[rcell].pr);
+            viscous_flux(Gd, k, nx, ny, lcell, rhol, u1l, u2l, prl);
+            viscous_flux(Gd, k, nx, ny, rcell, rhor, u1r, u2r, prr);
             for (int r = 1; r <= 4; r++)
             {
                 cell[lcell].flux[r] = cell[lcell].flux[r] + s * (*(Gp + r) + *(Gn + r) + *(Gd + r));
@@ -393,7 +418,7 @@ void evaluate_flux()
             prl = lprim[4];
 
             KFVS_wall_flux(Gwall, nx, ny, rhol, u1l, u2l, prl);
-            viscous_flux(Gd, k, nx, ny, lcell, cell[lcell].rho, 0, 0, cell[lcell].pr);
+            viscous_flux(Gd, k, nx, ny, lcell, rhol, 0, 0, prl);
             for (int r = 1; r <= 4; r++)
                 cell[lcell].flux[r] = cell[lcell].flux[r] + s * (*(Gwall + r) + *(Gd + r));
         }
@@ -419,7 +444,7 @@ void evaluate_flux()
             prl = lprim[4];
 
             KFVS_outer_flux(Gout, nx, ny, rhol, u1l, u2l, prl);
-            viscous_flux(Gd, k, nx, ny, lcell, cell[lcell].rho, u1_inf, u2_inf, cell[lcell].pr);
+            viscous_flux(Gd, k, nx, ny, lcell, 1.225, u1_inf, u2_inf, 101325);
             for (int r = 1; r <= 4; r++)
                 cell[lcell].flux[r] = cell[lcell].flux[r] + s * (*(Gout + r) + *(Gd + r));
         }
@@ -575,7 +600,7 @@ double cfl_cutback()
 {
     double func_delt(int);
     double del_U[5];
-    double epsilon_p, epsilon_rho, epsilon = 0;
+    double epsilon_p, epsilon_rho, epsilon = 1;
     double cfl_tilde, cfl_min;
     double rho, u1, u2, pr, area, dt;
     cfl_min = cfl_max;
@@ -586,7 +611,7 @@ double cfl_cutback()
         u1 = cell[k].u1;
         u2 = cell[k].u2;
         pr = cell[k].pr;
-        area = cell[k].pr;
+        area = cell[k].area;
         for (int i = 1; i <= 4; i++)
         {
             del_U[i] = -dt * cell[k].flux[i] / area;
