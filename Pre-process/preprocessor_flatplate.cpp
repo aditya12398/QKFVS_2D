@@ -46,7 +46,7 @@ struct Edge edge[400101];
 
 int main(int arg, char *argv[])
 {
-	string fname = "fixed_Flatplate_Grid.dat";
+	string fname = "./Flatplate/fixed_Flatplate_Grid.dat";
 	void point_data(string);
 	void print();
 	void cell_data();
@@ -137,39 +137,29 @@ void cell_data()
 	double y1, y2, y3, y4;
 	for (int k = 1; k <= max_cells; k++)
 	{
-		int quo = int(k / imax);
-		int rem = int(k % imax);
+		int quo = int(k / (imax - 1));
+		int rem = int(k % (imax - 1));
 		if (rem == 0)
 		{
 			j = quo;
-			i = imax;
+			i = (imax - 1);
 		}
 		else if (rem != 0)
 		{
 			j = quo + 1;
 			i = rem;
 		}
-		if (i < imax)
-		{
-			cell[k].v1 = i + (j - 1) * imax;
-			cell[k].v2 = cell[k].v1 + 1;
-			cell[k].v3 = cell[k].v2 + imax;
-			cell[k].v4 = cell[k].v3 - 1;
-		}
-		else if (i == imax)
-		{
-			cell[k].v1 = i + (j - 1) * imax;
-			cell[k].v2 = cell[k].v1 - imax + 1;
-			cell[k].v3 = cell[k].v2 + imax;
-			cell[k].v4 = cell[k].v3 + imax - 1;
-		}
-		cell[k].e[1] = i + 2 * imax * (j - 1);
-		cell[k].e[2] = cell[k].e[1] + imax;
+
+		cell[k].v1 = i + (j - 1) * imax;
+		cell[k].v2 = cell[k].v1 + 1;
+		cell[k].v3 = cell[k].v2 + imax;
+		cell[k].v4 = cell[k].v3 - 1;
+
+		cell[k].e[1] = i + (2 * imax - 1) * (j - 1);
+		cell[k].e[2] = cell[k].e[1] + (imax - 1);
 		cell[k].e[3] = cell[k].e[2] + imax;
-		if (i < imax)
-			cell[k].e[4] = cell[k].e[2] + 1;
-		else if (i == imax)
-			cell[k].e[4] = cell[k].e[1] + 1;
+		cell[k].e[4] = cell[k].e[2] + 1;
+
 		x1 = point[cell[k].v1].x;
 		y1 = point[cell[k].v1].y;
 		x2 = point[cell[k].v2].x;
@@ -193,10 +183,11 @@ void cell_data()
 		// initial conditions for each cell
 		double pi = 4.0 * atan(1.0);
 		double theta = alpha * pi / 180;
-		cell[k].rho = 1.0;
-		cell[k].u1 = M * cos(theta);
-		cell[k].u2 = M * sin(theta);
-		cell[k].pr = 0.714285714;
+		double u_ref = sqrt(1.4 * 287 * 288.20);
+		cell[k].rho = 1.225;
+		cell[k].u1 = u_ref * M * cos(theta);
+		cell[k].u2 = u_ref * M * sin(theta);
+		cell[k].pr = 101325;
 		// finding the connectivity for each cell
 		int nbhs = 0;
 		if (j == 1)
@@ -372,8 +363,8 @@ void edge_data()
 				edge[N].v2 = edge[N].v1 + 1;
 				normals(N);
 				length(N);
-				edge[N].lcell = i + (j - 1) * imax;
-				edge[N].rcell = i + (j - 2) * imax;
+				edge[N].lcell = i + (j - 1) * (imax - 1);
+				edge[N].rcell = i + (j - 2) * (imax - 1);
 				edge[N].status = 'f';
 				N++;
 			}
@@ -387,18 +378,18 @@ void edge_data()
 				if (i == 1)
 				{
 					edge[N].lcell = 0; //j * imax;
-					edge[N].rcell = i + (j - 1) * imax;
+					edge[N].rcell = i + (j - 1) * (imax - 1);
 					edge[N].status = 'i';
 				}
 				else if (i > 1 && i < imax)
 				{
-					edge[N].lcell = (i - 1) + (j - 1) * imax;
+					edge[N].lcell = (i - 1) + (j - 1) * (imax - 1);
 					edge[N].rcell = edge[N].lcell + 1;
 					edge[N].status = 'f';
 				}
 				else if (i == imax)
 				{
-					edge[N].lcell = (i - 1) + (j - 1) * imax;
+					edge[N].lcell = (i - 1) + (j - 1) * (imax - 1);
 					edge[N].rcell = 0; //edge[N].lcell + 1;
 					edge[N].status = 'e';
 				}
@@ -415,7 +406,7 @@ void edge_data()
 				normals(N);
 				length(N);
 				edge[N].lcell = 0;
-				edge[N].rcell = i + (j - 2) * imax;
+				edge[N].rcell = i + (j - 2) * (imax - 1);
 				edge[N].status = 'o';
 				N++;
 			}
@@ -544,5 +535,5 @@ void point_data_print()
 // from i and j values getting cell number
 int get_cell(int i, int j)
 {
-	return (i + (j - 1) * imax);
+	return (i + (j - 1) * (imax - 1));
 }

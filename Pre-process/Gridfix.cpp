@@ -5,7 +5,7 @@ using namespace std;
 
 int main()
 {
-    string filename = "Flatplate_Grid.dat";
+    string filename = "Check_1.dat";
     int imax, jmax;
     int i, j;
     double x, y, z;

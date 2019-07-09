@@ -97,7 +97,7 @@ Flow Parameters: fp_viscous
 */
 void input_data()
 {
-    ifstream infile("../Pre-process/Flatplate/flatplate_viscous_rectangular_dim");
+    ifstream infile("../Pre-process/Flatplate/flatplate_viscous_rectangular");
     ifstream infile2("viscous_flow_parameters");
     //Input Flow Parameters
     infile2 >> Mach >> aoa >> cfl_max >> max_iters >> limiter_const;
