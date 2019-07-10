@@ -7,13 +7,13 @@ This Pre-processor is made to handle rectangular, flatplate grids specially. Do 
 #include <cmath>
 using namespace std;
 
-int imax = 249;
-int jmax = 100;
+int imax = 201;
+int jmax = 51;
 int max_points;
 int max_cells;
 int max_edges;
 
-double M = 0.5;
+double M = 0.1;
 double alpha = 0.0;
 
 struct Point
@@ -46,7 +46,7 @@ struct Edge edge[400101];
 
 int main(int arg, char *argv[])
 {
-	string fname = "./Flatplate/fixed_Flatplate_Grid.dat";
+	string fname = "./Flatplate/fixed_Flatplate_2.dat";
 	void point_data(string);
 	void print();
 	void cell_data();
@@ -73,6 +73,7 @@ void point_data(string title)
 	ifstream infile(title);
 	double x, y;
 	int i, j, num;
+//	infile >> imax >> jmax;
 	for (int k = 1; k <= max_points; k++)
 	{
 		infile >> x >> y >> i >> j;
@@ -184,10 +185,16 @@ void cell_data()
 		double pi = 4.0 * atan(1.0);
 		double theta = alpha * pi / 180;
 		double u_ref = sqrt(1.4 * 287 * 288.20);
-		cell[k].rho = 1.225;
-		cell[k].u1 = u_ref * M * cos(theta);
-		cell[k].u2 = u_ref * M * sin(theta);
-		cell[k].pr = 101325;
+		double Re = 5000;
+		double mu = 1.461E-6 * (pow(288.20, 1.5) / (288.20 + 110.5));
+		double rho = mu * Re / (u_ref * M);
+		double u1 = u_ref * M * cos(theta);
+		double u2 = u_ref * M * sin(theta);
+		double pr = rho * 287 * 288.20;
+		cell[k].rho = rho;
+		cell[k].u1 =  u1;
+		cell[k].u2 =  u2;
+		cell[k].pr =  pr;
 		// finding the connectivity for each cell
 		int nbhs = 0;
 		if (j == 1)
@@ -203,7 +210,7 @@ void cell_data()
 				cell[k].conn[nbhs++] = get_cell(i + 2, j + 1);
 				cell[k].conn[nbhs++] = get_cell(i + 2, j + 2);
 			}
-			else if (i > 1 && i < imax)
+			else if (i > 1 && i < (imax - 1))
 			{
 				cell[k].conn[nbhs++] = get_cell(i - 1, j);
 				cell[k].conn[nbhs++] = get_cell(i - 1, j + 1);
@@ -214,7 +221,7 @@ void cell_data()
 				cell[k].conn[nbhs++] = get_cell(i + 1, j + 1);
 				cell[k].conn[nbhs++] = get_cell(i + 1, j + 2);
 			}
-			if (i == imax)
+			if (i == (imax - 1))
 			{
 				cell[k].conn[nbhs++] = get_cell(i - 2, j);
 				cell[k].conn[nbhs++] = get_cell(i - 2, j + 1);
@@ -239,7 +246,7 @@ void cell_data()
 				cell[k].conn[nbhs++] = get_cell(i + 2, j);
 				cell[k].conn[nbhs++] = get_cell(i + 2, j + 1);
 			}
-			else if (i > 1 && i < imax)
+			else if (i > 1 && i < (imax - 1))
 			{
 				cell[k].conn[nbhs++] = get_cell(i - 1, j - 1);
 				cell[k].conn[nbhs++] = get_cell(i, j - 1);
@@ -250,7 +257,7 @@ void cell_data()
 				cell[k].conn[nbhs++] = get_cell(i, j + 1);
 				cell[k].conn[nbhs++] = get_cell(i + 1, j + 1);
 			}
-			else if (i == imax)
+			else if (i == (imax - 1))
 			{
 				cell[k].conn[nbhs++] = get_cell(i, j - 1);
 				cell[k].conn[nbhs++] = get_cell(i, j + 1);
@@ -275,7 +282,7 @@ void cell_data()
 				cell[k].conn[nbhs++] = get_cell(i + 2, j - 1);
 				cell[k].conn[nbhs++] = get_cell(i + 2, j - 2);
 			}
-			if (i > 1 && i < imax)
+			if (i > 1 && i < (imax - 1))
 			{
 				cell[k].conn[nbhs++] = get_cell(i - 1, j - 2);
 				cell[k].conn[nbhs++] = get_cell(i - 1, j - 1);
@@ -286,7 +293,7 @@ void cell_data()
 				cell[k].conn[nbhs++] = get_cell(i + 1, j - 1);
 				cell[k].conn[nbhs++] = get_cell(i + 1, j);
 			}
-			if (i == imax)
+			if (i == (imax - 1))
 			{
 				cell[k].conn[nbhs++] = get_cell(i, j - 1);
 				cell[k].conn[nbhs++] = get_cell(i, j - 2);

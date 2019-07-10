@@ -10,13 +10,12 @@ Strongly Recommended: Use Visual Studio Code(text editor) while understanding th
 using namespace std;
 
 int max_edges, max_cells, max_iters;
-int imax = 249, jmax = 100;
-double Mach, aoa, cfl_max, limiter_const;
+double residue, max_res; //RMS Residue and maximum residue in the fluid domain
+int max_res_cell;        //Cell number with maximum residue
+double Mach, aoa, cfl_max, limiter_const, Re, mu_inf, rho_inf, pr_inf, u_inf;
+int imax = 201, jmax = 51;
 double gma = 1.4, R = 287, Prandtl_number = 0.72; //Flow and material parameters
-double residue, max_res;                          //RMS Residue and maximum residue in the fluid domain
-int max_res_cell;                                 //Cell number with maximum residue
 double pi = 4.0 * atan(1.0);
-
 //Structure to store edge data
 struct Edge
 {
@@ -60,7 +59,7 @@ int main(int arg, char *argv[])
     double res_old;
 
     input_data();
-    int T = 250;
+    int T = 200;
     for (int t = 1; t <= max_iters; t++)
     {
         initial_conditions();
@@ -83,7 +82,7 @@ int main(int arg, char *argv[])
 
         if (t == T)
         {
-            T = T + 250;
+            T = T + 200;
             print_output();
         }
     }
@@ -97,10 +96,10 @@ Flow Parameters: fp_viscous
 */
 void input_data()
 {
-    ifstream infile("../Pre-process/Flatplate/flatplate_viscous_rectangular");
+    ifstream infile("../Pre-process/Flatplate/flatplate_viscous_rectangular_2");
     ifstream infile2("viscous_flow_parameters");
     //Input Flow Parameters
-    infile2 >> Mach >> aoa >> cfl_max >> max_iters >> limiter_const;
+    infile2 >> Mach >> Re >> aoa >> cfl_max >> max_iters >> limiter_const;
     //Input Edge data
     infile >> max_edges;
     edge = new Edge[max_edges + 1];
@@ -125,8 +124,22 @@ void input_data()
         for (int r = 0; r < cell[k].nbhs; r++)
             infile >> cell[k].conn[r];
     }
+    mu_inf = 1.461E-6 * (pow(288.20, 1.5) / (288.20 + 110.5));
+    u_inf = Mach * sqrt(1.4 * 287 * 288.20);
+    rho_inf = mu_inf * Re / (u_inf);
+    pr_inf = rho_inf * 287 * 288.20;
     infile.close();
     infile2.close();
+
+    for (int k = 1; k <= 248; k++)
+    {
+        if (cell[k].cx > 0)
+        {
+            cell[k].cx = edge[k].mx;
+            cell[k].cy = edge[k].my;
+        }
+    }
+
 } //End of the function
 
 double *gauss_elimination(double matrix[5][(6)])
@@ -293,6 +306,9 @@ void viscous_flux(double *G, int e, double nx, double ny, int CELL, double rho_r
     double u_dash[5], tp_dash[3];
     double tauxx, tauyy, tauxy, t_ref, mu, kappa;
     t_ref = pr_ref / (R * rho_ref);
+    if (edge[e].status == 'w')
+        t_ref = cell[CELL].tp;
+
     mu = 1.458E-6 * pow(t_ref, 1.5) / (t_ref + 110.4);
     kappa = mu * (gma * R) / (Prandtl_number * (gma - 1));
     if (edge[e].status == 'w' || edge[e].status == 'o' || edge[e].status == 'i' || edge[e].status == 'e')
@@ -350,12 +366,14 @@ void viscous_flux(double *G, int e, double nx, double ny, int CELL, double rho_r
 //Fluxes are evaluated in this function
 void evaluate_flux()
 {
+    static int count = 1;
     //Function Prototypes
     void linear_reconstruction(double *, int, int);
     void KFVS_pos_flux(double *, double, double, double, double, double, double);
     void KFVS_neg_flux(double *, double, double, double, double, double, double);
     void KFVS_wall_flux(double *, double, double, double, double, double, double);
     void KFVS_outer_flux(double *, double, double, double, double, double, double);
+    ofstream g4flux("./Output/" + to_string(count++) + "_g4.dat");
 
     double u_dash[5];
     int lcell, rcell;
@@ -394,11 +412,8 @@ void evaluate_flux()
 
             KFVS_pos_flux(Gp, nx, ny, rhol, u1l, u2l, prl);
             KFVS_neg_flux(Gn, nx, ny, rhor, u1r, u2r, prr);
-            if (edge[k].mx > 0)
-            {
-                viscous_flux(Gd, k, nx, ny, lcell, rhol, u1l, u2l, prl);
-                viscous_flux(Gd, k, nx, ny, rcell, rhor, u1r, u2r, prr);
-            }
+            viscous_flux(Gd, k, nx, ny, lcell, rhol, u1l, u2l, prl);
+            viscous_flux(Gd, k, nx, ny, rcell, rhor, u1r, u2r, prr);
             for (int r = 1; r <= 4; r++)
             {
                 cell[lcell].flux[r] = cell[lcell].flux[r] + s * (*(Gp + r) + *(Gn + r) + *(Gd + r));
@@ -433,8 +448,9 @@ void evaluate_flux()
 
             for (int r = 1; r <= 4; r++)
                 cell[lcell].flux[r] = cell[lcell].flux[r] + s * (*(Gwall + r) + *(Gd + r));
+            g4flux << k << "\t" << Gwall[4] << "\t" << Gd[4] << endl;
         }
-        else if (status == 'o' || status == 'i') //Flux across outer boundary edge and inlet edges
+        else if (status == 'o') //Flux across outer boundary edge and inlet edges
         {
             if (lcell == 0)
             {
@@ -442,11 +458,10 @@ void evaluate_flux()
                 ny = -ny;
                 lcell = rcell;
             }
-            double u_ref = sqrt(gma * R * 288.20);
 
             double theta = aoa * pi / 180;
-            double u1_inf = u_ref * Mach * cos(theta);
-            double u2_inf = u_ref * Mach * sin(theta);
+            double u1_inf = u_inf * cos(theta);
+            double u2_inf = u_inf * sin(theta);
             linear_reconstruction(lprim, lcell, k);
 
             rhol = lprim[1];
@@ -455,26 +470,61 @@ void evaluate_flux()
             prl = lprim[4];
 
             KFVS_outer_flux(Gout, nx, ny, rhol, u1l, u2l, prl);
-            if (edge[k].mx > 0)
-                viscous_flux(Gd, k, nx, ny, lcell, 1.225, u1_inf, u2_inf, 101325);
+
+            viscous_flux(Gd, k, nx, ny, lcell, rho_inf, u1_inf, u2_inf, pr_inf);
             for (int r = 1; r <= 4; r++)
                 cell[lcell].flux[r] = cell[lcell].flux[r] + s * (*(Gout + r) + *(Gd + r));
         }
         else if (status == 'e') //Flux across the outlet edge
         {
-            rhol = cell[lcell].rho;
-            u1l = cell[lcell].u1;
-            u2l = cell[lcell].u2;
-            prl = cell[lcell].pr;
+            if (lcell == 0)
+            {
+                nx = -nx;
+                ny = -ny;
+                lcell = rcell;
+            }
+            //linear_reconstruction(lprim, lcell, k);
 
-            KFVS_pos_flux(Gp, nx, ny, rhol, u1l, u2l, prl);
-            viscous_flux(Gd, k, nx, ny, lcell, rhol, u1l, u2l, prl);
+            rhol = cell[lcell].rho;
+            u1l = cell[lcell].u1;//lprim[2];
+            u2l = cell[lcell].u2;//lprim[3];
+            prl = pr_inf;
+            KFVS_pos_flux(Gp, nx, ny, rhol, u1l, u2l, pr_inf);
+            KFVS_neg_flux(Gn, nx, ny, rhol, u1l, u2l, pr_inf);
+            viscous_flux(Gd, k, nx, ny, lcell, rhol, u1l, u2l, pr_inf);
             for (int r = 1; r <= 4; r++)
             {
-                cell[lcell].flux[r] = cell[lcell].flux[r] + s * (*(Gp + r) + *(Gd + r));
+                cell[lcell].flux[r] = cell[lcell].flux[r] + s * (*(Gp + r) + *((Gn + r)) + *(Gd + r));
+            }
+        }
+        else if (status == 'i')
+        {
+            /*if (lcell == 0)
+            {
+                nx = -nx;
+                ny = -ny;
+                lcell = rcell;
+            }*/
+            double theta = aoa * pi / 180;
+            double u1_inf = u_inf * cos(theta);
+            double u2_inf = u_inf * sin(theta);
+            //prl = cell[rcell].pr;
+            linear_reconstruction(rprim, rcell, k);
+
+            rhor = rprim[1];
+            u1r = rprim[2];
+            u2r = rprim[3];
+            prr = rprim[4];
+            KFVS_pos_flux(Gp, nx, ny, rho_inf, u1_inf, u2_inf, pr_inf);
+            KFVS_neg_flux(Gn, nx, ny, rhor, u1r, u2r, prr);
+            viscous_flux(Gd, k, nx, ny, rcell, rho_inf, u1_inf, u2_inf, prr);
+            for (int r = 1; r <= 4; r++)
+            {
+                cell[rcell].flux[r] = cell[rcell].flux[r] - s * (*(Gp + r) + *((Gn + r)) + *(Gd + r));
             }
         }
     } //End of k loop
+    g4flux.close();
 } //End of the flux function
 
 //Expressions for the kfvs - fluxes
@@ -574,14 +624,10 @@ void KFVS_outer_flux(double *Gout, double nx, double ny, double rho, double u1, 
 
     double Gp[5];
     double Gn_inf[5];
-    double rho_inf, u1_inf, u2_inf, pr_inf, u_ref;
-    u_ref = sqrt(gma * R * 288.20);
-
+    double u1_inf, u2_inf;
     double theta = aoa * pi / 180;
-    rho_inf = 1.225;
-    u1_inf = u_ref * Mach * cos(theta);
-    u2_inf = u_ref * Mach * sin(theta);
-    pr_inf = 101325.0;
+    u1_inf = u_inf * cos(theta);
+    u2_inf = u_inf * sin(theta);
 
     KFVS_pos_flux(Gp, nx, ny, rho, u1, u2, pr);
     KFVS_neg_flux(Gn_inf, nx, ny, rho_inf, u1_inf, u2_inf, pr_inf);
@@ -614,21 +660,32 @@ void conserved_to_primitive(double *U, int k)
     double U2 = *(U + 2);
     double U3 = *(U + 3);
     double U4 = *(U + 4);
-
-    cell[k].rho = U1;
-    double temp = 1 / U1;
-    cell[k].u1 = U2 * temp;
-    cell[k].u2 = U3 * temp;
-    temp = U4 - (0.5 * temp) * (U2 * U2 + U3 * U3);
-    cell[k].pr = 0.4 * temp;
-    cell[k].tp = cell[k].pr / (R * cell[k].rho);
+    if (k <= 248 && cell[k].cx > 0)
+    {
+        double temp = 1 / U1;
+        temp = U4 - (0.5 * temp) * (U2 * U2 + U3 * U3);
+        cell[k].pr = 0.4 * temp;
+        cell[k].u1 = cell[k].u2 = 0;
+        cell[k].rho = U1;//cell[k].pr / (R * cell[k].tp);
+        cell[k].tp = cell[k].pr / (R * cell[k].rho);//1.2 * 288.20;
+    }
+    else
+    {
+        cell[k].rho = U1;
+        double temp = 1 / U1;
+        cell[k].u1 = U2 * temp;
+        cell[k].u2 = U3 * temp;
+        temp = U4 - (0.5 * temp) * (U2 * U2 + U3 * U3);
+        cell[k].pr = 0.4 * temp;
+        cell[k].tp = cell[k].pr / (R * cell[k].rho);
+    }
 } //End of the function
 
 double cfl_cutback()
 {
     double func_delt(int);
     double del_U[5];
-    double epsilon_p, epsilon_rho, epsilon = 1;
+    double epsilon_p, epsilon_rho, epsilon = 0.1 / cfl_max;
     double cfl_tilde, cfl_min;
     double rho, u1, u2, pr, area, dt;
     cfl_min = cfl_max;
@@ -812,10 +869,9 @@ double *rungekutta(double *K, int k, double dt)
         }
         else if (edge[e].status == 'o')
         {
-            double u_ref = sqrt(gma * R * 288.20);
             double theta = aoa * pi / 180;
-            double u1_inf = u_ref * Mach * cos(theta);
-            double u2_inf = u_ref * Mach * sin(theta);
+            double u1_inf = u_inf * cos(theta);
+            double u2_inf = u_inf * sin(theta);
 
             KFVS_outer_flux(Gp, nx, ny, rho, u1, u2, pr);
             rk_viscous_flux(Gd, nx, ny, u_dash, tp_dash, rho, u1_inf, u2_inf, pr);

@@ -5,13 +5,14 @@ using namespace std;
 
 int main()
 {
-    string filename = "Check_1.dat";
+    string filename = "Flatplate_2.dat";
     int imax, jmax;
     int i, j;
     double x, y, z;
     ifstream infile(filename);
     ofstream outfile("fixed_" + filename);
     infile >> imax >> jmax;
+	outfile << imax << "\t" << jmax << endl;
     //--imax;
     for (i = 1; i <= imax; i++)
     {
