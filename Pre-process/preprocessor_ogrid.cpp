@@ -62,7 +62,7 @@ int main(int arg, char *argv[])
 
 void point_data()
 {
-	ifstream infile("./gridout.dat");
+	ifstream infile("./naca0012/naca0012_grid.dat");
 	double x, y;
 	int i, j, num;
 	for (int k = 1; k <= max_points; k++)
@@ -184,11 +184,19 @@ void cell_data()
 		cell[k].cy = cy / (6.0 * Area);
 		// initial conditions for each cell
 		double pi = 4.0 * atan(1.0);
-		double theta = alpha * pi / 180;
-		cell[k].rho = 1.0;
-		cell[k].u1 = M * cos(theta);
-		cell[k].u2 = M * sin(theta);
-		cell[k].pr = 0.714285714;
+                double theta = alpha * pi / 180;
+                double u_ref = sqrt(1.4 * 287 * 288.20);
+                double Re = 5000;
+                double mu = 1.461E-6 * (pow(288.20, 1.5) / (288.20 + 110.5));
+                double rho = mu * Re / (u_ref * M);
+                double u1 = u_ref * M * cos(theta);
+                double u2 = u_ref * M * sin(theta);
+                double pr = rho * 287 * 288.20;
+                cell[k].rho = rho;
+                cell[k].u1 =  u1;
+                cell[k].u2 =  u2;
+                cell[k].pr =  pr;
+
 		// finding the connectivity for each cell
 		int nbhs = 0;
 		if (j == 1)
@@ -495,14 +503,14 @@ void length(int N)
 
 void print()
 {
-	ofstream outfile("./Output/print");
+	ofstream outfile("./naca0012/print");
 	for (int k = 1; k <= max_edges; k++)
 		outfile << edge[k].v1 << "\t" << edge[k].v2 << "\t" << edge[k].lcell << "\t" << edge[k].rcell << endl;
 } //End of the function
 
 void output1()
 {
-	ofstream outfile("./Output/1order-input-data");
+	ofstream outfile("./naca0012/1order-input-data");
 	outfile << max_edges << endl;
 	for (int k = 1; k <= max_edges; k++)
 		outfile << edge[k].lcell << "\t" << edge[k].rcell << "\t" << edge[k].status << "\t" << edge[k].nx << "\t" << edge[k].ny << "\t" << edge[k].length << endl;
@@ -520,7 +528,7 @@ void output1()
 
 void output2()
 {
-	ofstream outfile("./Output/2order-input-data");
+	ofstream outfile("./naca0012/2order-input-data");
 	outfile << max_edges << endl;
 	for (int k = 1; k <= max_edges; k++)
 		outfile << edge[k].mx << "\t" << edge[k].my << "\t" << edge[k].lcell << "\t" << edge[k].rcell << "\t" << edge[k].status << "\t" << edge[k].nx << "\t" << edge[k].ny << "\t" << edge[k].length << endl;
@@ -543,7 +551,7 @@ void output2()
 //input file for vigie plot
 void vigie_plot()
 {
-	ofstream outfile("./Output/vigie-file");
+	ofstream outfile("./naca0012/vigie-file");
 	outfile << max_points << endl;
 	outfile << endl;
 	for (int k = 1; k <= max_points; k++)
@@ -558,7 +566,7 @@ void vigie_plot()
 // printing the point-data information
 void point_data_print()
 {
-	ofstream outfile("./Output/point-data");
+	ofstream outfile("./naca0012/point-data");
 	for (int k = 1; k <= max_points; k++)
 	{
 		outfile << k << "\t" << point[k].noc;

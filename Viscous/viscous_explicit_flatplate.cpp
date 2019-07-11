@@ -135,13 +135,13 @@ void input_data()
     infile.close();
     infile2.close();
 
-    for (int k = 1; k <= 248; k++)
+    for (int k = 1; (k <= 200 && cell[k].cx > -1 && cell[k].cx < 1) ; k++)
     {
-        if (cell[k].cx > 0)
-        {
+        //if (cell[k].cx > 0)
+        //{
             cell[k].cx = edge[k].mx;
             cell[k].cy = edge[k].my;
-        }
+        //}
     }
 
 } //End of the function
@@ -214,7 +214,7 @@ void construct_equation(int k, char var, double matrix[5][6], double f)
         dx = cell[p].cx - cell[k].cx;
         dy = cell[p].cy - cell[k].cy;
         double dist = sqrt(dx * dx + dy * dy); //Distance between cell and edge midpoint
-        double w = 1 / pow((dist / ds), 2.0);  //Least Squares weight
+        double w = 1;// / pow((dist / ds), 2.0);  //Least Squares weight
 
         if (var == 'u')
             df = cell[p].u1 - f;
@@ -370,14 +370,14 @@ void viscous_flux(double *G, int e, double nx, double ny, int CELL, double rho_r
 //Fluxes are evaluated in this function
 void evaluate_flux()
 {
-    static int count = 1;
+    //static int count = 1;
     //Function Prototypes
     void linear_reconstruction(double *, int, int);
     void KFVS_pos_flux(double *, double, double, double, double, double, double);
     void KFVS_neg_flux(double *, double, double, double, double, double, double);
     void KFVS_wall_flux(double *, double, double, double, double, double, double);
     void KFVS_outer_flux(double *, double, double, double, double, double, double);
-    ofstream g4flux("./Output/" + to_string(count++) + "_g4.dat");
+    //ofstream g4flux("./Output/" + to_string(count++) + "_g4.dat");
 
     double u_dash[5];
     int lcell, rcell;
@@ -440,7 +440,7 @@ void evaluate_flux()
             u2l = lprim[3];
             prl = lprim[4];
 
-            if (edge[k].mx > 0) //No-Slip wall starting from x = 0
+            if (edge[k].mx > -1 && edge[k].mx < 1) //No-Slip wall starting from x = 0
             {
                 KFVS_wall_flux(Gwall, nx, ny, rhol, 0, 0, prl);
                 viscous_flux(Gd, k, nx, ny, lcell, rhol, 0, 0, prl);
@@ -452,7 +452,7 @@ void evaluate_flux()
 
             for (int r = 1; r <= 4; r++)
                 cell[lcell].flux[r] = cell[lcell].flux[r] + s * (*(Gwall + r) + *(Gd + r));
-            g4flux << k << "\t" << Gwall[4] << "\t" << Gd[4] << endl;
+            //g4flux << k << "\t" << Gwall[4] << "\t" << Gd[4] << endl;
         }
         else if (status == 'o') //Flux across outer boundary edge and inlet edges
         {
@@ -475,7 +475,7 @@ void evaluate_flux()
 
             KFVS_outer_flux(Gout, nx, ny, rhol, u1l, u2l, prl);
 
-            viscous_flux(Gd, k, nx, ny, lcell, rho_inf, u1_inf, u2_inf, pr_inf);
+            //viscous_flux(Gd, k, nx, ny, lcell, rho_inf, u1_inf, u2_inf, pr_inf);
             for (int r = 1; r <= 4; r++)
                 cell[lcell].flux[r] = cell[lcell].flux[r] + s * (*(Gout + r) + *(Gd + r));
         }
@@ -528,7 +528,7 @@ void evaluate_flux()
             }
         }
     } //End of k loop
-    g4flux.close();
+    //g4flux.close();
 } //End of the flux function
 
 //Expressions for the kfvs - fluxes
@@ -664,7 +664,7 @@ void conserved_to_primitive(double *U, int k)
     double U2 = *(U + 2);
     double U3 = *(U + 3);
     double U4 = *(U + 4);
-    if (k <= 248 && cell[k].cx > 0)
+    if (k <= 200 && cell[k].cx < 1 && cell[k].cx > -1)
     {
         double temp = 1 / U1;
         temp = U4 - (0.5 * temp) * (U2 * U2 + U3 * U3);
