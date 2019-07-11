@@ -96,7 +96,7 @@ Flow Parameters: fp_viscous
 */
 void input_data()
 {
-    ifstream infile("naca0012_viscous_ogrid_4");
+    ifstream infile("naca0012_viscous_ogrid_5");
     ifstream infile2("viscous_flow_parameters");
     //Input Flow Parameters
     infile2 >> Mach >> aoa >> cfl_max >> max_iters >> limiter_const;
@@ -195,7 +195,7 @@ void construct_equation(int k, char var, double matrix[5][6], double f)
         dx = cell[p].cx - cell[k].cx;
         dy = cell[p].cy - cell[k].cy;
         double dist = sqrt(dx * dx + dy * dy); //Distance between cell and edge midpoint
-        double w = 1 / pow(dist, 2.0);         //Least Squares weight
+        double w = 1;// / pow(dist, 2.0);         //Least Squares weight
 
         if (var == 'u')
             df = cell[p].u1 - f;
@@ -640,21 +640,19 @@ double func_delt(int k)
 {
     double smallest_dist(int);
     double rho, u1, u2, pr;
-    double area, temp1, smin;
+    double area, lambda_c, vmax, lambda_v;
 
     int edges, e;
-    double nx, ny, delt_inv = 0.0, delt_visc = 0.0;
+    double nx, ny, sig_lambda_c = 0.0, sig_lambda_v = 0.0;
 
     area = cell[k].area;
     u1 = cell[k].u1;
     u2 = cell[k].u2;
     rho = cell[k].rho;
     pr = cell[k].pr;
-    smin = smallest_dist(k);
     edges = cell[k].noe;
-
-    temp1 = 3.0 * sqrt(pr / rho);
-
+    double mu = 1.458E-6 * pow(cell[k].tp, 1.5) / (cell[k].tp + 110.4);
+    vmax = 3.0 * sqrt(pr / rho);
     for (int r = 1; r <= edges; r++)
     {
         e = cell[k].edge[r];
@@ -668,15 +666,13 @@ double func_delt(int k)
         }
 
         double un = u1 * nx + u2 * ny;
-        double temp2 = (fabs(un) + temp1);
-        temp2 = length * temp2;
-        delt_inv = delt_inv + temp2;
+        lambda_c = length * (fabs(un) + vmax);
+        double temp = length * length;
+        sig_lambda_c = sig_lambda_c + lambda_c;
+        sig_lambda_v = sig_lambda_v + temp;
     }
-    double mu = 1.458E-6 * pow(cell[k].tp, 1.5) / (cell[k].tp + 110.4);
-
-    delt_inv = 2.0 * area / delt_inv;
-    delt_visc = rho * Prandtl_number * smin * smin / (4 * mu * gma);
-    double delt = 1 / ((1 / delt_inv) + (1 / delt_visc));
+    sig_lambda_v = sig_lambda_v * (4 * gma * mu) / (rho * Prandtl_number * area);
+    double delt = area / (sig_lambda_c + sig_lambda_v);
     return (delt);
 } //End of the function
 
@@ -1031,7 +1027,7 @@ void q_derivatives()
             double delx = cell[p].cx - cell[k].cx;
             double dely = cell[p].cy - cell[k].cy;
             double dist = sqrt(delx * delx + dely * dely);
-            double w = 1 / pow(dist, 2.0);
+            double w = 1;// / pow(dist, 2.0);
 
             sig_dxdx = sig_dxdx + w * delx * delx;
             sig_dydy = sig_dydy + w * dely * dely;
