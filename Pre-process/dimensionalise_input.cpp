@@ -97,14 +97,14 @@ int fixdata(string fname)
 int main()
 {
     int error = 0;
-    error = inputdata("./Output/2order-input-data");
+    error = inputdata("./Flatplate/flatplate_viscous_rectangular");
     if (error)
     {
         cout << "Error in reading file, please check the file or file title\nExiting...\n";
         exit(1);
     }
     error = 0;
-    error = fixdata("./Output/naca0012_viscous_ogrid_4");
+    error = fixdata("./Flatplate/flatplate_viscous_rectangular_dim");
     if (error)
     {
         cout << "Error in writing file, please check the file or file title\nExiting...\n";
