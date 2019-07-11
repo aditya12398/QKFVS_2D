@@ -5,7 +5,9 @@ using namespace std;
 
 int main()
 {
-    string filename = "Flatplate_2.dat";
+    string filename;
+    cout << "Enter the filename: ";
+    cin >> filename;
     int imax, jmax;
     int i, j;
     double x, y, z;
@@ -14,7 +16,7 @@ int main()
     infile >> imax >> jmax;
 	outfile << imax << "\t" << jmax << endl;
     //--imax;
-    for (i = 1; i <= imax; i++)
+    for (i = 1; i < imax; i++)
     {
         for (j = 1; j <= jmax; j++)
         {

@@ -100,7 +100,7 @@ Flow Parameters: flow-parameters-qkfvs
 */
 void input_data()
 {
-	std::ifstream infile("ogrid_viscous");
+	std::ifstream infile("../Pre-process/naca0012/fixed_naca0012_160x80");
 	std::ifstream infile2("flow-parameters-qkfvs");
 
 	infile2 >> Mach >> aoa >> cfl >> max_iters >> limiter_const;

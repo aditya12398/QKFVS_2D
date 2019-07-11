@@ -62,7 +62,11 @@ int main(int arg, char *argv[])
 
 void point_data()
 {
-	ifstream infile("./naca0012/naca0012_grid.dat");
+	string filename;
+	cout << "Enter the filename: ";
+	cin >> filename;
+	ifstream infile(filename);
+	infile >> imax >> jmax;
 	double x, y;
 	int i, j, num;
 	for (int k = 1; k <= max_points; k++)
@@ -184,18 +188,18 @@ void cell_data()
 		cell[k].cy = cy / (6.0 * Area);
 		// initial conditions for each cell
 		double pi = 4.0 * atan(1.0);
-                double theta = alpha * pi / 180;
-                double u_ref = sqrt(1.4 * 287 * 288.20);
-                double Re = 5000;
-                double mu = 1.461E-6 * (pow(288.20, 1.5) / (288.20 + 110.5));
-                double rho = mu * Re / (u_ref * M);
-                double u1 = u_ref * M * cos(theta);
-                double u2 = u_ref * M * sin(theta);
-                double pr = rho * 287 * 288.20;
-                cell[k].rho = rho;
-                cell[k].u1 =  u1;
-                cell[k].u2 =  u2;
-                cell[k].pr =  pr;
+		double theta = alpha * pi / 180;
+		double u_ref = sqrt(1.4 * 287 * 288.20);
+		//double Re = 5000;
+		//double mu = 1.461E-6 * (pow(288.20, 1.5) / (288.20 + 110.5));
+		double rho = 1.225; //mu * Re / (u_ref * M);
+		double u1 = u_ref * M * cos(theta);
+		double u2 = u_ref * M * sin(theta);
+		double pr = rho * 287 * 288.20;
+		cell[k].rho = rho;
+		cell[k].u1 = u1;
+		cell[k].u2 = u2;
+		cell[k].pr = pr;
 
 		// finding the connectivity for each cell
 		int nbhs = 0;
