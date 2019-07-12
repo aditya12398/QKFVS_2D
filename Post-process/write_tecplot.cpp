@@ -1,10 +1,11 @@
 #include <fstream>
 #include <iostream>
 #include <cmath>
-#include<string>
+#include <string>
 
 using namespace std;
 
+int imax = 160, jmax = 80;
 int max_edges, max_cells, max_iters;
 double Mach, aoa, cfl, limiter_const;
 double residue, max_res; //RMS Residue and residue in the fluid domain
@@ -37,8 +38,8 @@ struct Cell *cell;
 
 void input_data()
 {
-    ifstream infile("2order-input-data");
-    ifstream infile2("primitive-vector.dat");
+    ifstream infile("../Pre-process/naca0012/fixed_naca0012_160x80");
+    ifstream infile2("../Inviscid/prim-vect_naca0012_M05_160x80.dat");
     //Input Edge data
     int temp;
     infile >> max_edges;
@@ -67,70 +68,70 @@ void input_data()
 
 void write_tecplot()
 {
-    string title = "Solution_Tecplot.dat";
+    string title = "naca0012_M05_160x80.dat";
     ofstream tecplotfile("./" + title);
     tecplotfile << "TITLE: \"QKFVS Viscous Code - NAL\"\n";
     tecplotfile << "VARIABLES= \"X\", \"Y\", \"Density\", \"Pressure\", \"x-velocity\", \"y-velocity\", \"Velocity Magnitude\"\n";
-    tecplotfile << "ZONE I= 160 J= 59 , DATAPACKING=BLOCK\n";
-    for (int j = 1; j < 60; j++)
+    tecplotfile << "ZONE I= " << imax << " J= " << jmax << " , DATAPACKING=BLOCK\n";
+    for (int j = 1; j <= jmax; j++)
     {
-        for (int i = 1; i <= 160; i++)
+        for (int i = 1; i <= imax; i++)
         {
-            int k = (j - 1) * 160 + i;
+            int k = (j - 1) * imax + i;
             tecplotfile << cell[k].cx << "\n";
         }
     }
     tecplotfile << "\n";
-    for (int j = 1; j < 60; j++)
+    for (int j = 1; j <= jmax; j++)
     {
-        for (int i = 1; i <= 160; i++)
+        for (int i = 1; i <= imax; i++)
         {
-            int k = (j - 1) * 160 + i;
+            int k = (j - 1) * imax + i;
             tecplotfile << cell[k].cy << "\n";
         }
     }
     tecplotfile << "\n";
-    for (int j = 1; j < 60; j++)
+    for (int j = 1; j <= jmax; j++)
     {
-        for (int i = 1; i <= 160; i++)
+        for (int i = 1; i <= imax; i++)
         {
-            int k = (j - 1) * 160 + i;
+            int k = (j - 1) * imax + i;
             tecplotfile << cell[k].rho << "\n";
         }
     }
     tecplotfile << "\n";
-    for (int j = 1; j < 60; j++)
+    for (int j = 1; j <= jmax; j++)
     {
-        for (int i = 1; i <= 160; i++)
+        for (int i = 1; i <= imax; i++)
         {
-            int k = (j - 1) * 160 + i;
+            int k = (j - 1) * imax + i;
             tecplotfile << cell[k].pr << "\n";
         }
     }
     tecplotfile << "\n";
-    for (int j = 1; j < 60; j++)
+    for (int j = 1; j <= jmax; j++)
     {
-        for (int i = 1; i <= 160; i++)
+        for (int i = 1; i <= imax; i++)
         {
-            int k = (j - 1) * 160 + i;
+            int k = (j - 1) * imax + i;
             tecplotfile << cell[k].u1 << "\n";
         }
     }
     tecplotfile << "\n";
-    for (int j = 1; j < 60; j++)
+    for (int j = 1; j <= jmax; j++)
     {
-        for (int i = 1; i <= 160; i++)
+        for (int i = 1; i <= imax; i++)
         {
-            int k = (j - 1) * 160 + i;
+            int k = (j - 1) * imax + i;
             tecplotfile << cell[k].u2 << "\n";
         }
     }
     tecplotfile << "\n";
-    for (int j = 1; j < 60; j++)
+    for (int j = 1; j <= jmax; j++)
     {
-        for (int i = 1; i <= 160; i++)
+        for (int i = 1; i <= imax; i++)
         {
-            int k = (j - 1) * 160 + i;
+            int k = (j - 1) * imax + i;
             tecplotfile << sqrt(pow(cell[k].u1, 2) + pow(cell[k].u2, 2)) << "\n";
         }
     }

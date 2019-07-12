@@ -10,11 +10,15 @@ Strongly Recommended: Use Visual Studio Code(text editor) while understanding th
 #include <cmath>
 #include <string>
 
+using namespace std;
+
 int max_edges, max_cells, max_iters;
+int imax = 160, jmax = 80;
 double Mach, aoa, cfl, limiter_const;
 double residue, max_res; //RMS Residue and maximum residue in the fluid domain
 int max_res_cell; //Cell number with maximum residue
 double pi = 4.0 * atan(1.0);
+string casename;
 
 //Structure to store edge data
 struct Edge
@@ -54,9 +58,10 @@ int main(int arg, char *argv[])
 	void state_update();
 	void print_output();
 	void write_tecplot();
-	std::ofstream outfile("residue");
-
+	cout << "Enter the name of the case file to be used.\nThe output files will appear as residue_<case>: ";
+	cin >> casename;
 	double res_old;
+	ofstream outfile("residue_" + casename);
 
 	input_data();
 	aliasing();
@@ -77,11 +82,11 @@ int main(int arg, char *argv[])
 			res_old = residue;
 		residue = log10(residue / res_old);
 		if ((residue) < -12) {
-			std::cout << "Convergence criteria reached.\n";
+			cout << "Convergence criteria reached.\n";
 			break;
 		}
-		std::cout << t << "\t" << residue << "\t" << max_res << "\t" << max_res_cell << std::endl;
-		outfile << t << "\t" << residue << "\t" << max_res << "\t" << max_res_cell << std::endl;
+		cout << t << "\t" << residue << "\t" << max_res << "\t" << max_res_cell << endl;
+		outfile << t << "\t" << residue << "\t" << max_res << "\t" << max_res_cell << endl;
 
 		if (t == T)
 		{
@@ -100,8 +105,8 @@ Flow Parameters: flow-parameters-qkfvs
 */
 void input_data()
 {
-	std::ifstream infile("../Pre-process/naca0012/fixed_naca0012_160x80");
-	std::ifstream infile2("flow-parameters-qkfvs");
+	ifstream infile("../Pre-process/naca0012/fixed_naca0012_160x80");
+	ifstream infile2("inviscid_flow_parameters");
 
 	infile2 >> Mach >> aoa >> cfl >> max_iters >> limiter_const;
 	//Input Edge data
@@ -328,11 +333,11 @@ void KFVS_outer_flux(double *Gout, double nx, double ny, double rho, double u1, 
 	double rho_inf, u1_inf, u2_inf, pr_inf;
 
 	double theta = aoa * pi / 180;
-
-	rho_inf = 1.0;
-	u1_inf = Mach * cos(theta);
-	u2_inf = Mach * sin(theta);
-	pr_inf = 1.0 / 1.4;
+	double u_ref = sqrt(1.4 * 287 * 288.20);
+	rho_inf = 1.225;
+	u1_inf = u_ref * Mach * cos(theta);
+	u2_inf = u_ref * Mach * sin(theta);
+	pr_inf = 101325;
 
 	KFVS_pos_flux(Gp, nx, ny, rho, u1, u2, pr);
 	KFVS_neg_flux(Gn_inf, nx, ny, rho_inf, u1_inf, u2_inf, pr_inf);
@@ -483,70 +488,69 @@ void state_update()
 } //End of the function
 void write_tecplot()
 {
-	std::string title = "Solution_Tecplot_Explicit_EU.dat";
-	std::ofstream tecplotfile("./" + title);
+	ofstream tecplotfile("tecplot_" + casename + ".dat");
 	tecplotfile << "TITLE: \"QKFVS Viscous Code - NAL\"\n";
 	tecplotfile << "VARIABLES= \"X\", \"Y\", \"Density\", \"Pressure\", \"x-velocity\", \"y-velocity\", \"Velocity Magnitude\"\n";
-	tecplotfile << "ZONE I= 298 J= 179 , DATAPACKING=BLOCK\n";
-	for (int j = 1; j < 180; j++)
+	tecplotfile << "ZONE I=" << imax << " J= " << jmax << " , DATAPACKING=BLOCK\n";
+	for (int j = 1; j <= jmax; j++)
 	{
-		for (int i = 1; i <= 298; i++)
+		for (int i = 1; i <= imax; i++)
 		{
-			int k = (j - 1) * 298 + i;
+			int k = (j - 1) * imax + i;
 			tecplotfile << cell[k].cx << "\n";
 		}
 	}
 	tecplotfile << "\n";
-	for (int j = 1; j < 180; j++)
+	for (int j = 1; j <= jmax; j++)
 	{
-		for (int i = 1; i <= 298; i++)
+		for (int i = 1; i <= imax; i++)
 		{
-			int k = (j - 1) * 298 + i;
+			int k = (j - 1) * imax + i;
 			tecplotfile << cell[k].cy << "\n";
 		}
 	}
 	tecplotfile << "\n";
-	for (int j = 1; j < 180; j++)
+	for (int j = 1; j <= jmax; j++)
 	{
-		for (int i = 1; i <= 298; i++)
+		for (int i = 1; i <= imax; i++)
 		{
-			int k = (j - 1) * 298 + i;
+			int k = (j - 1) * imax + i;
 			tecplotfile << cell[k].rho << "\n";
 		}
 	}
 	tecplotfile << "\n";
-	for (int j = 1; j < 180; j++)
+	for (int j = 1; j <= jmax; j++)
 	{
-		for (int i = 1; i <= 298; i++)
+		for (int i = 1; i <= imax; i++)
 		{
-			int k = (j - 1) * 298 + i;
+			int k = (j - 1) * imax + i;
 			tecplotfile << cell[k].pr << "\n";
 		}
 	}
 	tecplotfile << "\n";
-	for (int j = 1; j < 180; j++)
+	for (int j = 1; j <= jmax; j++)
 	{
-		for (int i = 1; i <= 298; i++)
+		for (int i = 1; i <= imax; i++)
 		{
-			int k = (j - 1) * 298 + i;
+			int k = (j - 1) * imax + i;
 			tecplotfile << cell[k].u1 << "\n";
 		}
 	}
 	tecplotfile << "\n";
-	for (int j = 1; j < 180; j++)
+	for (int j = 1; j <= jmax; j++)
 	{
-		for (int i = 1; i <= 298; i++)
+		for (int i = 1; i <= imax; i++)
 		{
-			int k = (j - 1) * 298 + i;
+			int k = (j - 1) * imax + i;
 			tecplotfile << cell[k].u2 << "\n";
 		}
 	}
 	tecplotfile << "\n";
-	for (int j = 1; j < 180; j++)
+	for (int j = 1; j <= jmax; j++)
 	{
-		for (int i = 1; i <= 298; i++)
+		for (int i = 1; i <= imax; i++)
 		{
-			int k = (j - 1) * 298 + i;
+			int k = (j - 1) * imax + i;
 			tecplotfile << sqrt(pow(cell[k].u1, 2) + pow(cell[k].u2, 2)) << "\n";
 		}
 	}
@@ -556,9 +560,9 @@ void write_tecplot()
 //Function which prints the final primitive vector into the file "primitive-vector.dat"
 void print_output()
 {
-	std::ofstream outfile("primitive-vector_implicit.dat");
+	ofstream outfile("prim-vect_" + casename);
 	for (int k = 1; k <= max_cells; k++)
-		outfile << k << "\t" << cell[k].rho << "\t" << cell[k].u1 << "\t" << cell[k].u2 << "\t" << cell[k].pr << std::endl;
+		outfile << k << "\t" << cell[k].rho << "\t" << cell[k].u1 << "\t" << cell[k].u2 << "\t" << cell[k].pr << endl;
 } //End of the function
 
 /*
@@ -682,10 +686,10 @@ void linear_reconstruction(double *prim, int CELL, int edg)
 	for (int r = 1; r <= 4; r++)
 		qtilde[r] = cell[CELL].q[r] + delx * cell[CELL].qx[r] + dely * cell[CELL].qy[r];
 
-	/*limiter(qtilde,phi,CELL);
+	limiter(qtilde,phi,CELL);
 
 	for(int r=1;r<=4;r++)
-	qtilde[r] = cell[CELL].q[r] + phi[r]*(delx*cell[CELL].qx[r] + dely*cell[CELL].qy[r]);*/
+	qtilde[r] = cell[CELL].q[r] + phi[r]*(delx*cell[CELL].qx[r] + dely*cell[CELL].qy[r]);
 
 	func_qtilde_to_prim_variables(prim, qtilde);
 } //End of the function
