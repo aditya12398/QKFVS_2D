@@ -13,7 +13,7 @@ Strongly Recommended: Use Visual Studio Code(text editor) while understanding th
 using namespace std;
 
 int max_edges, max_cells, max_iters;
-int imax = 160, jmax = 80;
+int imax = 320, jmax = 160;
 double Mach, aoa, cfl, limiter_const;
 double residue, max_res; //RMS Residue and maximum residue in the fluid domain
 int max_res_cell; //Cell number with maximum residue
@@ -105,7 +105,7 @@ Flow Parameters: flow-parameters-qkfvs
 */
 void input_data()
 {
-	ifstream infile("../Pre-process/naca0012/fixed_naca0012_160x80");
+	ifstream infile("../Pre-process/naca0012/fixed_naca0012_320x160");
 	ifstream infile2("inviscid_flow_parameters");
 
 	infile2 >> Mach >> aoa >> cfl >> max_iters >> limiter_const;
@@ -683,8 +683,8 @@ void linear_reconstruction(double *prim, int CELL, int edg)
 	delx = edge[edg].mx - cell[CELL].cx;
 	dely = edge[edg].my - cell[CELL].cy;
 
-	for (int r = 1; r <= 4; r++)
-		qtilde[r] = cell[CELL].q[r] + delx * cell[CELL].qx[r] + dely * cell[CELL].qy[r];
+	/*for (int r = 1; r <= 4; r++)
+		qtilde[r] = cell[CELL].q[r] + delx * cell[CELL].qx[r] + dely * cell[CELL].qy[r];*/
 
 	limiter(qtilde,phi,CELL);
 

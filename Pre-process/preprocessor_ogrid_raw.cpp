@@ -9,8 +9,8 @@ int max_points;
 int max_cells;
 int max_edges;
 
-double M = 1.2;
-double alpha = 0.0;
+double M = 0.85;
+double alpha = 1.0;
 string filename;
 struct Point
 {

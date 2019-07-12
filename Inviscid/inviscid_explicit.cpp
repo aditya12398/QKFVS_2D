@@ -11,11 +11,14 @@ Strongly Recommended: Use Visual Studio Code(text editor) while understanding th
 #include <string>
 
 using namespace std;
+
+int imax = 160, jmax = 80;
 int max_edges, max_cells, max_iters;
 double Mach, aoa, cfl, limiter_const;
 double residue, max_res; //RMS Residue and maximum residue in the fluid domain
 int max_res_cell;		 //Cell number with maximum residue
 double pi = 4.0 * atan(1.0);
+string casename;
 
 //Structure to store edge data
 struct Edge
@@ -51,9 +54,10 @@ int main(int arg, char *argv[])
 	void state_update();
 	void print_output();
 	void write_tecplot();
-	ofstream outfile("residue_explicit_EU");
-
+	cout << "Enter the name of the case file to be used.\nThe output files will appear as residue_<case>: ";
+	cin >> casename;
 	double res_old;
+	ofstream outfile("residue_" + casename);
 
 	input_data();
 
@@ -95,8 +99,8 @@ Flow Parameters: flow-parameters-qkfvs
 */
 void input_data()
 {
-	ifstream infile("2order-input-data");
-	ifstream infile2("flow-parameters-qkfvs");
+	ifstream infile("../Pre-process/naca0012/fixed_naca0012_320x160");
+	ifstream infile2("inviscid_flow_parameters");
 
 	infile2 >> Mach >> aoa >> cfl >> max_iters >> limiter_const;
 	//Input Edge data
@@ -475,70 +479,69 @@ void state_update()
 } //End of the function
 void write_tecplot()
 {
-	string title = "Solution_Tecplot_Explicit_EU.dat";
-	ofstream tecplotfile("./" + title);
+	ofstream tecplotfile("tecplot_" + casename + ".dat");
 	tecplotfile << "TITLE: \"QKFVS Viscous Code - NAL\"\n";
 	tecplotfile << "VARIABLES= \"X\", \"Y\", \"Density\", \"Pressure\", \"x-velocity\", \"y-velocity\", \"Velocity Magnitude\"\n";
-	tecplotfile << "ZONE I= 298 J= 179 , DATAPACKING=BLOCK\n";
-	for (int j = 1; j < 180; j++)
+	tecplotfile << "ZONE I=" << imax << " J= " << jmax << " , DATAPACKING=BLOCK\n";
+	for (int j = 1; j <= jmax; j++)
 	{
-		for (int i = 1; i <= 298; i++)
+		for (int i = 1; i <= imax; i++)
 		{
-			int k = (j - 1) * 298 + i;
+			int k = (j - 1) * imax + i;
 			tecplotfile << cell[k].cx << "\n";
 		}
 	}
 	tecplotfile << "\n";
-	for (int j = 1; j < 180; j++)
+	for (int j = 1; j <= jmax; j++)
 	{
-		for (int i = 1; i <= 298; i++)
+		for (int i = 1; i <= imax; i++)
 		{
-			int k = (j - 1) * 298 + i;
+			int k = (j - 1) * imax + i;
 			tecplotfile << cell[k].cy << "\n";
 		}
 	}
 	tecplotfile << "\n";
-	for (int j = 1; j < 180; j++)
+	for (int j = 1; j <= jmax; j++)
 	{
-		for (int i = 1; i <= 298; i++)
+		for (int i = 1; i <= imax; i++)
 		{
-			int k = (j - 1) * 298 + i;
+			int k = (j - 1) * imax + i;
 			tecplotfile << cell[k].rho << "\n";
 		}
 	}
 	tecplotfile << "\n";
-	for (int j = 1; j < 180; j++)
+	for (int j = 1; j <= jmax; j++)
 	{
-		for (int i = 1; i <= 298; i++)
+		for (int i = 1; i <= imax; i++)
 		{
-			int k = (j - 1) * 298 + i;
+			int k = (j - 1) * imax + i;
 			tecplotfile << cell[k].pr << "\n";
 		}
 	}
 	tecplotfile << "\n";
-	for (int j = 1; j < 180; j++)
+	for (int j = 1; j <= jmax; j++)
 	{
-		for (int i = 1; i <= 298; i++)
+		for (int i = 1; i <= imax; i++)
 		{
-			int k = (j - 1) * 298 + i;
+			int k = (j - 1) * imax + i;
 			tecplotfile << cell[k].u1 << "\n";
 		}
 	}
 	tecplotfile << "\n";
-	for (int j = 1; j < 180; j++)
+	for (int j = 1; j <= jmax; j++)
 	{
-		for (int i = 1; i <= 298; i++)
+		for (int i = 1; i <= imax; i++)
 		{
-			int k = (j - 1) * 298 + i;
+			int k = (j - 1) * imax + i;
 			tecplotfile << cell[k].u2 << "\n";
 		}
 	}
 	tecplotfile << "\n";
-	for (int j = 1; j < 180; j++)
+	for (int j = 1; j <= jmax; j++)
 	{
-		for (int i = 1; i <= 298; i++)
+		for (int i = 1; i <= imax; i++)
 		{
-			int k = (j - 1) * 298 + i;
+			int k = (j - 1) * imax + i;
 			tecplotfile << sqrt(pow(cell[k].u1, 2) + pow(cell[k].u2, 2)) << "\n";
 		}
 	}
@@ -548,7 +551,7 @@ void write_tecplot()
 //Function which prints the final primitive vector into the file "primitive-vector.dat"
 void print_output()
 {
-	ofstream outfile("primitive-vector_explicit_EU.dat");
+	ofstream outfile("prim-vect_" + casename);
 	for (int k = 1; k <= max_cells; k++)
 		outfile << k << "\t" << cell[k].rho << "\t" << cell[k].u1 << "\t" << cell[k].u2 << "\t" << cell[k].pr << endl;
 } //End of the function
@@ -671,13 +674,13 @@ void linear_reconstruction(double *prim, int CELL, int edg)
 	delx = edge[edg].mx - cell[CELL].cx;
 	dely = edge[edg].my - cell[CELL].cy;
 
-	for (int r = 1; r <= 4; r++)
-		qtilde[r] = cell[CELL].q[r] + delx * cell[CELL].qx[r] + dely * cell[CELL].qy[r];
+	/*for (int r = 1; r <= 4; r++)
+		qtilde[r] = cell[CELL].q[r] + delx * cell[CELL].qx[r] + dely * cell[CELL].qy[r];*/
 
-	/*limiter(qtilde,phi,CELL);
+	limiter(qtilde,phi,CELL);
 
 	for(int r=1;r<=4;r++)
-	qtilde[r] = cell[CELL].q[r] + phi[r]*(delx*cell[CELL].qx[r] + dely*cell[CELL].qy[r]);*/
+	qtilde[r] = cell[CELL].q[r] + phi[r]*(delx*cell[CELL].qx[r] + dely*cell[CELL].qy[r]);
 
 	func_qtilde_to_prim_variables(prim, qtilde);
 } //End of the function
