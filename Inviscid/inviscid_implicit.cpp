@@ -13,32 +13,32 @@ Strongly Recommended: Use Visual Studio Code(text editor) while understanding th
 using namespace std;
 
 int max_edges, max_cells, max_iters;
-int imax = 320, jmax = 160;
+int imax = 480, jmax = 240;
 double Mach, aoa, cfl, limiter_const;
 double residue, max_res; //RMS Residue and maximum residue in the fluid domain
-int max_res_cell; //Cell number with maximum residue
+int max_res_cell;		 //Cell number with maximum residue
 double pi = 4.0 * atan(1.0);
 string casename;
-
+string output_directory = "./Testcases/NACA0012_M085_Alpha1/";
 //Structure to store edge data
 struct Edge
 {
-	int lcell, rcell; //Holds cell numbers on either side of the edge. Prefix l stands for left and r for right.
+	int lcell, rcell;	  //Holds cell numbers on either side of the edge. Prefix l stands for left and r for right.
 	double nx, ny, mx, my; //Hold point data. Prefix m stands for midpoint and n for edge normal.
-	double length; //Holds edge length data
-	char status; //Specifies whether the edge is Internal(f), Wall(w) or Outer Boundary(o).
+	double length;		   //Holds edge length data
+	char status;		   //Specifies whether the edge is Internal(f), Wall(w) or Outer Boundary(o).
 };
 //Structure to store cell data
 struct Cell
 {
-	int *edge, noe, nbhs, *conn; //Holds enclosing edges and neighbour cell data.
-	double area, cx, cy; //Area of the cell and cell centre coordinates
-	double rho, u1, u2, pr; //Values of density, x - velocity, y - velocity and pressure of the cell
-	double flux[5]; //Kinetic Fluxes. Reference: See function `void KFVS_pos_flux(...)`
-	double Upold[5], Upnew[5]; //Corresponds to void forward_sweep()
-	double Unew[5], Uold[5]; //Corresponds to void backward_sweep()
+	int *edge, noe, nbhs, *conn;  //Holds enclosing edges and neighbour cell data.
+	double area, cx, cy;		  //Area of the cell and cell centre coordinates
+	double rho, u1, u2, pr;		  //Values of density, x - velocity, y - velocity and pressure of the cell
+	double flux[5];				  //Kinetic Fluxes. Reference: See function `void KFVS_pos_flux(...)`
+	double Upold[5], Upnew[5];	//Corresponds to void forward_sweep()
+	double Unew[5], Uold[5];	  //Corresponds to void backward_sweep()
 	int alias, cell_with_alias_k; //Aliasing of cells for implicitisation
-	double q[5], qx[5], qy[5]; //Entropy Variables. Reference: See Boltzmann Equations
+	double q[5], qx[5], qy[5];	//Entropy Variables. Reference: See Boltzmann Equations
 };
 
 struct Edge *edge;
@@ -61,7 +61,7 @@ int main(int arg, char *argv[])
 	cout << "Enter the name of the case file to be used.\nThe output files will appear as residue_<case>: ";
 	cin >> casename;
 	double res_old;
-	ofstream outfile("residue_" + casename);
+	ofstream outfile(output_directory + "residue_" + casename);
 
 	input_data();
 	aliasing();
@@ -81,7 +81,13 @@ int main(int arg, char *argv[])
 		if (t == 1)
 			res_old = residue;
 		residue = log10(residue / res_old);
-		if ((residue) < -12) {
+		if (isnan(residue))
+		{
+			cout << "Solution blew up. Exiting code.\n";
+			exit(1);
+		}
+		if ((residue) < -12)
+		{
 			cout << "Convergence criteria reached.\n";
 			break;
 		}
@@ -105,7 +111,7 @@ Flow Parameters: flow-parameters-qkfvs
 */
 void input_data()
 {
-	ifstream infile("../Pre-process/naca0012/fixed_naca0012_320x160");
+	ifstream infile("../Pre-process/naca0012/fixed_naca0012_480x240");
 	ifstream infile2("inviscid_flow_parameters");
 
 	infile2 >> Mach >> aoa >> cfl >> max_iters >> limiter_const;
@@ -488,7 +494,7 @@ void state_update()
 } //End of the function
 void write_tecplot()
 {
-	ofstream tecplotfile("tecplot_" + casename + ".dat");
+	ofstream tecplotfile(output_directory + "tecplot_" + casename + ".dat");
 	tecplotfile << "TITLE: \"QKFVS Viscous Code - NAL\"\n";
 	tecplotfile << "VARIABLES= \"X\", \"Y\", \"Density\", \"Pressure\", \"x-velocity\", \"y-velocity\", \"Velocity Magnitude\"\n";
 	tecplotfile << "ZONE I=" << imax << " J= " << jmax << " , DATAPACKING=BLOCK\n";
@@ -560,7 +566,7 @@ void write_tecplot()
 //Function which prints the final primitive vector into the file "primitive-vector.dat"
 void print_output()
 {
-	ofstream outfile("prim-vect_" + casename);
+	ofstream outfile(output_directory + "prim-vect_" + casename);
 	for (int k = 1; k <= max_cells; k++)
 		outfile << k << "\t" << cell[k].rho << "\t" << cell[k].u1 << "\t" << cell[k].u2 << "\t" << cell[k].pr << endl;
 } //End of the function
@@ -683,14 +689,14 @@ void linear_reconstruction(double *prim, int CELL, int edg)
 	delx = edge[edg].mx - cell[CELL].cx;
 	dely = edge[edg].my - cell[CELL].cy;
 
-	/*for (int r = 1; r <= 4; r++)
-		qtilde[r] = cell[CELL].q[r] + delx * cell[CELL].qx[r] + dely * cell[CELL].qy[r];*/
+	for (int r = 1; r <= 4; r++)
+		qtilde[r] = cell[CELL].q[r] + delx * cell[CELL].qx[r] + dely * cell[CELL].qy[r];
 
-	limiter(qtilde,phi,CELL);
+	/*limiter(qtilde,phi,CELL);
 
 	for(int r=1;r<=4;r++)
 	qtilde[r] = cell[CELL].q[r] + phi[r]*(delx*cell[CELL].qx[r] + dely*cell[CELL].qy[r]);
-
+*/
 	func_qtilde_to_prim_variables(prim, qtilde);
 } //End of the function
 
@@ -1044,11 +1050,11 @@ void get_G(double nx, double ny, double *U, double *G)
 	temp = U4 - (0.5 * temp) * (U2 * U2 + U3 * U3);
 
 	pr = 0.4 * temp;
-    G[1] = rho * (u1 * nx + u2 * ny);
-    G[2] = (pr + rho * u1 * u1) * nx + rho * u1 * u2 * ny;
-    G[3] = (pr + rho * u2 * u2) * ny + rho * u1 * u2 * nx;
-    double e = 2.5 * pr / rho + (0.5 * (u1 * u1 + u2 * u2));
-    G[4] = (pr + rho * e) * (u1 * nx + u2 * ny);
+	G[1] = rho * (u1 * nx + u2 * ny);
+	G[2] = (pr + rho * u1 * u1) * nx + rho * u1 * u2 * ny;
+	G[3] = (pr + rho * u2 * u2) * ny + rho * u1 * u2 * nx;
+	double e = 2.5 * pr / rho + (0.5 * (u1 * u1 + u2 * u2));
+	G[4] = (pr + rho * e) * (u1 * nx + u2 * ny);
 } //End of the function
 
 //Aliasing the cell numbers
