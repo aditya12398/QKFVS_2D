@@ -13,7 +13,7 @@ Strongly Recommended: Use Visual Studio Code(text editor) while understanding th
 using namespace std;
 
 int max_edges, max_cells, max_iters;
-int imax = 480, jmax = 240;
+int imax = 480, jmax = 240, order = 2;
 double Mach, aoa, cfl, limiter_const;
 double residue, max_res; //RMS Residue and maximum residue in the fluid domain
 int max_res_cell;		 //Cell number with maximum residue
@@ -60,6 +60,8 @@ int main(int arg, char *argv[])
 	void write_tecplot();
 	cout << "Enter the name of the case file to be used.\nThe output files will appear as residue_<case>: ";
 	cin >> casename;
+	cout << "Enter '1' for first order and '2' for 2nd order solution: ";
+	cin >> order;
 	double res_old;
 	ofstream outfile(output_directory + "residue_" + casename);
 
@@ -690,13 +692,18 @@ void linear_reconstruction(double *prim, int CELL, int edg)
 	dely = edge[edg].my - cell[CELL].cy;
 
 	for (int r = 1; r <= 4; r++)
-		qtilde[r] = cell[CELL].q[r] + delx * cell[CELL].qx[r] + dely * cell[CELL].qy[r];
+	{
+		if (order != 1)
+			qtilde[r] = cell[CELL].q[r] + delx * cell[CELL].qx[r] + dely * cell[CELL].qy[r];
+		else
+			qtilde[r] = cell[CELL].q[r];
+	}
 
 	/*limiter(qtilde,phi,CELL);
 
 	for(int r=1;r<=4;r++)
-	qtilde[r] = cell[CELL].q[r] + phi[r]*(delx*cell[CELL].qx[r] + dely*cell[CELL].qy[r]);
-*/
+	qtilde[r] = cell[CELL].q[r] + phi[r]*(delx*cell[CELL].qx[r] + dely*cell[CELL].qy[r]);*/
+
 	func_qtilde_to_prim_variables(prim, qtilde);
 } //End of the function
 
