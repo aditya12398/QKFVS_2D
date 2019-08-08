@@ -19,7 +19,7 @@ double residue, max_res; //RMS Residue and maximum residue in the fluid domain
 int max_res_cell;		 //Cell number with maximum residue
 double pi = 4.0 * atan(1.0);
 string casename;
-string output_directory = "./Testcases/NACA0012_M085_Alpha1/";
+string output_directory = "./Testcases/NACA0012_M063_Alpha2/";
 //Structure to store edge data
 struct Edge
 {
